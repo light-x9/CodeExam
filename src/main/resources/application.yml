@@ -1,0 +1,56 @@
+server:
+  port: 8080
+spring:
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    url: jdbc:mysql://localhost:3306/exam_system_new?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2b8
+    username: root
+    password: root
+    hikari:
+      connection-test-query: SELECT 1 # 自动检测连接
+      connection-timeout: 60000 #数据库连接超时时间,默认30秒
+      idle-timeout: 500000 #空闲连接存活最大时间，默认600000（10分钟）
+      max-lifetime: 540000 #此属性控制池中连接的最长生命周期，值0表示无限生命周期，默认1800000即30分钟
+      maximum-pool-size: 12 #连接池最大连接数，默认是10
+      minimum-idle: 10 #最小空闲连接数量
+      pool-name: SPHHikariPool # 连接池名称
+  data:
+    redis:
+      host: 192.168.100.128
+      password: 209746
+      port: 6379
+#用于打印框架生成的sql语句，便于调试
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    auto-mapping-behavior: full #开启嵌套自动映射
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      logic-delete-field: isDeleted # 全局逻辑删除的实体属性名(配置后可以忽略不配置步骤二)
+      logic-delete-value: 1 # 逻辑已删除值(默认为 1)
+      logic-not-delete-value: 0 # 逻辑未删除值(默认为 0)
+
+#用于打印框架生成的sql语句，便于调试
+
+# 配置kimi api
+# 服务地址
+#          apikey
+#          model
+#          temperature
+kimi:
+  api:
+    base-url: https://api.moonshot.cn/v1/chat/completions
+    api-key: sk-p6OuHxjnFy3uXCAWAGs9TUeuer8OfuknMl39ePyQ9G3o3SHo
+    model: moonshot-v1-32k
+    temperature: 0.3
+    max-tokens: 4096
+logging:
+  level:
+    root: info  # 全局改回 info，防止刷屏
+    # 只针对你想排查的部分开启 debug
+    com.atguigu.exam: debug  # 你的业务代码
+    org.springframework.data.redis: debug # Redis 操作相关
+    io.lettuce.core: debug # Redis 连接驱动相关
