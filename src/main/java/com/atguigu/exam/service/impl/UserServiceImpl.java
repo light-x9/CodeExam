@@ -3,6 +3,7 @@ package com.atguigu.exam.service.impl;
 import com.atguigu.exam.entity.User;
 import com.atguigu.exam.mapper.UserMapper;
 import com.atguigu.exam.service.UserService;
+import com.atguigu.exam.utils.JwtUtil;
 import com.atguigu.exam.vo.LoginRequestVo;
 import com.atguigu.exam.vo.LoginResponseVo;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -23,9 +24,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Autowired
     private BCryptPasswordEncoder passwordEncoder;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     /**
      * 管理员登录
-     * 流程：1.查用户 → 2.校验角色必须是ADMIN → 3.BCrypt加密比对密码 → 4.组装返回数据
+     * 
+     * Level 1：数据库查用户 → 明文比对密码
+     * Level 2：BCrypt 加密比对密码
+     * Level 3：JWT 无状态认证 → 登录成功生成 Token，后续请求靠 Token 鉴权
+     * 
+     * 流程：1.查用户 → 2.校验角色 → 3.BCrypt比对密码 → 4.生成JWT → 5.组装返回
      */
     @Override
     public LoginResponseVo login(LoginRequestVo loginRequestVo) {
@@ -55,15 +64,21 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new RuntimeException("用户名或密码错误");
         }
 
-        // ========== 第4步：组装返回数据 ==========
+        // ========== 第4步：生成 JWT Token（Level 3 新增）==========
+        // 之前 Level 1/2 只是 setToken(null)，现在真正生成 Token
+        // JWT 里放了 userId、username、role 三样信息
+        // 后续请求只要带上这个 Token，服务器就能知道是谁、什么角色
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
+
+        // ========== 第5步：组装返回数据 ==========
         LoginResponseVo responseVo = new LoginResponseVo();
         responseVo.setUserId(user.getId());
         responseVo.setUsername(user.getUsername());
         responseVo.setRealName(user.getRealName());
         responseVo.setRole(user.getRole());
-        responseVo.setToken(null);
+        responseVo.setToken(token);  // Level 3：返回真正的 JWT Token，不再是 null
 
-        log.info("管理员登录成功：{} ({})", user.getUsername(), user.getRealName());
+        log.info("管理员登录成功：{} ({})，Token已生成", user.getUsername(), user.getRealName());
         return responseVo;
     }
 

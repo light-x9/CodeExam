@@ -47,6 +47,16 @@ kimi:
     model: moonshot-v1-32k
     temperature: 0.3
     max-tokens: 4096
+# ==================== Level 3：JWT 无状态认证配置 ====================
+# JWT Secret 密钥 —— 生产环境必须用复杂随机字符串！
+# HMAC-SHA256 算法要求密钥至少 256 bits（32字节）
+# 下面的密钥仅用于学习，真实项目请用环境变量或配置中心管理
+jwt:
+  secret: exam_system_jwt_secret_key_2024_level3_learning
+  expiration: 86400000  # Token 有效期：24小时（单位：毫秒）
+  header: Authorization  # HTTP 请求头名称
+  prefix: "Bearer "  # Token 前缀（Bearer 后面有个空格）
+
 logging:
   level:
     root: info  # 全局改回 info，防止刷屏

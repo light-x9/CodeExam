@@ -54,10 +54,43 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
-        <!-- Spring Security Crypto - 仅引入加密模块，不引入整个Security框架 -->
+       <!-- Spring Security Crypto - 仅引入加密模块，不引入整个Security框架 -->
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+        <!-- ==================== Level 3：JWT 无状态认证 ==================== -->
+        <!--
+            JWT（JSON Web Token）是什么？
+            ┌─────────────────────────────────────────────────────────────┐
+            │ JWT 是一个开放标准(RFC 7519)，用于在各方之间安全传输JSON对象  │
+            │                                                             │
+            │ 为什么叫"无状态"？                                           │
+            │ - 传统Session：服务器内存存登录状态 → 有状态                 │
+            │ - JWT Token：客户端自己带着凭证，服务器不存 → 无状态          │
+            │                                                             │
+            │ JWT 结构：Header.Payload.Signature                          │
+            │ eyJhbGciOiJIUzI1NiJ9.eyJ1c2VySWQiOjF9.签名                  │
+            │                                                             │
+            │ jjwt 是 Java 中最流行的 JWT 库，API 简洁、线程安全            │
+            └─────────────────────────────────────────────────────────────┘
+        -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>0.12.5</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>0.12.5</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>0.12.5</version>
+            <scope>runtime</scope>
         </dependency>
         <!-- Jackson JSON处理 -->
         <dependency>
