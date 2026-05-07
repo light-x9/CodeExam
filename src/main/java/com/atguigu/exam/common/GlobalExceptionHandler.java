@@ -15,10 +15,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * 
  * 为什么需要它？
  * ┌─ 没有异常处理器时 ─────────────────────────────┐
- * │ Controller 抛 RuntimeException                 │
- * │   → Spring Boot 返回 HTTP 500                   │
- * │   → 响应体是 Spring 默认的错误 JSON（格式混乱）     │
- * │   → 前端拿不到我们定义的 code/message            │
+ * │ Controller 抛 RuntimeException                
+ * │   → Spring Boot 返回 HTTP 500                  │
+ * │   → 响应体是 Spring 默认的错误 JSON（格式混乱）  │
+ * │   → 前端拿不到我们定义的 code/message           │
  * └───────────────────────────────────────────────┘
  * 
  * ┌─ 有了异常处理器后 ─────────────────────────────┐

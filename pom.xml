@@ -54,6 +54,11 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- Spring Security Crypto - 仅引入加密模块，不引入整个Security框架 -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
         <!-- Jackson JSON处理 -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
