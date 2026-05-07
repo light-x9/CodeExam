@@ -104,6 +104,7 @@ public class PaperController {
      * @RequestBody 表示参数从请求体中获取，格式为JSON
      */
     @CrossOrigin("*")
+
     @PostMapping
     @Operation(summary = "手动创建试卷", description = "通过手动选择题目、填写试卷基础信息的方式完成手动组卷，创建新试卷")
     public Result<Paper> createPaper(@RequestBody PaperVo paperVo) {
