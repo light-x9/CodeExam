@@ -59,6 +59,31 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
+        <!-- ==================== Level 4：Spring AOP 面向切面编程 ==================== -->
+        <!--
+            AOP（Aspect-Oriented Programming）是什么？
+            ┌─────────────────────────────────────────────────────────────┐
+            │ AOP 是一种编程范式，把"横切关注点"（Cross-cutting Concerns）│
+            │ 从业务代码中抽离出来，集中管理。                              │
+            │                                                             │
+            │ 经典横切关注点：                                              │
+            │ • 日志记录（每个方法都要打日志？AOP 一把梭）                  │
+            │ • 权限校验（每个接口都要查权限？注解+AOP 一把梭）              │
+            │ • 性能监控（每个方法都要计时？AOP 一把梭）                    │
+            │ • 事务管理（@Transactional 本质就是 AOP）                    │
+            │                                                             │
+            │ Interceptor vs AOP：                                         │
+            │ • Interceptor：HTTP层 → 按URL拦截 → 有request/response      │
+            │ • AOP：方法层 → 按注解拦截 → 能拿到参数和返回值              │
+            │                                                             │
+            │ Level 3 用了 Interceptor 做登录拦截，Level 4 升级：          │
+            │ 用自定义注解 + AOP 实现方法级权限校验和操作日志记录          │
+            └─────────────────────────────────────────────────────────────┘
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
         <!-- ==================== Level 3：JWT 无状态认证 ==================== -->
         <!--
             JWT（JSON Web Token）是什么？

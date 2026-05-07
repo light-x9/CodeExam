@@ -1,5 +1,7 @@
 package com.atguigu.exam.controller;
 
+import com.atguigu.exam.annotation.OperationLog;
+import com.atguigu.exam.annotation.RequireRole;
 import com.atguigu.exam.common.Result;
 import com.atguigu.exam.entity.Question;
 import com.atguigu.exam.service.QuestionService;
@@ -123,8 +125,9 @@ public class QuestionController {
      */
     @PostMapping  // 映射POST请求到/api/questions
     @Operation(summary = "创建新题目", description = "添加新的考试题目，支持选择题、判断题、简答题等多种题型")
-    //Result<Question> 用于封装创建成功后的题目信息
-    //RequestBody 用于接收JSON格式的请求体, 将请求体中的数据映射到Question对象中, 并返回给前端
+    // ======== Level 4：AOP 注解演示 ========
+    @RequireRole({"ADMIN"})               // 权限校验：只有管理员能创建题目
+    @OperationLog("创建题目")              // 操作日志：自动记录谁、什么时候、做了什么
     public Result<Question> createQuestion(@RequestBody Question question) {
 // 核心业务逻辑：调用服务层方法执行题目保存操作
         questionService.saveQuestion(question);
@@ -150,6 +153,8 @@ public class QuestionController {
      */
     @PutMapping("/{id}")  // 处理PUT请求
     @Operation(summary = "更新题目信息", description = "修改指定题目的内容、选项、答案等信息")  // API描述
+    @RequireRole({"ADMIN"})   // Level 4：管理员权限校验
+    @OperationLog("更新题目")  // Level 4：操作日志记录
     public Result<Question> updateQuestion(
             @Parameter(description = "题目ID") @PathVariable Long id, 
             @RequestBody Question question) {
@@ -178,6 +183,8 @@ public class QuestionController {
      */
     @DeleteMapping("/{id}")  // 处理DELETE请求
     @Operation(summary = "删除题目", description = "根据ID删除指定的题目，包括关联的选项和答案数据")  // API描述
+    @RequireRole({"ADMIN"})   // Level 4：管理员权限校验
+    @OperationLog("删除题目")  // Level 4：操作日志记录
     public Result<String> deleteQuestion(@Parameter(description = "题目ID") @PathVariable Long id ) {
         // 根据操作结果返回不同的响应
         questionService.removeQuestion(id);
