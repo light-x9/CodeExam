@@ -70,6 +70,18 @@ public class OperationLogAspect {
         String operation = operationLog.value();
         Object[] args = joinPoint.getArgs();
 
+        // ━━━━━━━━ 【学习日志】操作日志切面 ━━━━━━━━
+        System.out.println("╔══════════════════════════════════════════════════════╗");
+        System.out.println("║  [5] OperationLogAspect.@AfterReturning() - 操作日志  ║");
+        System.out.println("╠══════════════════════════════════════════════════════╣");
+        System.out.println("║  线程：" + Thread.currentThread().getName() + "（依然是同一个线程！）");
+        System.out.println("║  UserContext.get() = " + currentUser + "  ← Controller 返回后，数据还在！");
+        System.out.println("║  操作描述：" + operation);
+        System.out.println("║  ★ 注意：这里是 @AfterReturning，Controller 已返回，但 ThreadLocal 还有数据");
+        System.out.println("║  ★ 只有 afterCompletion() 中的 remove() 才会清空它");
+        System.out.println("╚══════════════════════════════════════════════════════╝");
+        System.out.println();
+
         // ======== 第4步：统一格式记录操作日志 ========
         // 这里打印到控制台，实际项目可以写到数据库（操作日志表）
         log.info("┌────────────────── 操作日志 ──────────────────");

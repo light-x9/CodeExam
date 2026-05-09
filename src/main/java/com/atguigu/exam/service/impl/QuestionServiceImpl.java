@@ -127,6 +127,17 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     @Transactional(rollbackFor = Exception.class)  // 事务注解：任何异常都会回滚，保证数据一致性
     @Override
     public void saveQuestion(Question question) {
+        // ━━━━━━━━ 【学习日志】Service 层入口 ━━━━━━━━
+        System.out.println("╔══════════════════════════════════════════════════════╗");
+        System.out.println("║  [4] QuestionServiceImpl.saveQuestion() - 业务逻辑层   ║");
+        System.out.println("╠══════════════════════════════════════════════════════╣");
+        System.out.println("║  线程：" + Thread.currentThread().getName() + "（拦截器→AOP→Controller→Service，始终同一线程！）");
+        System.out.println("║  UserContext.get() = " + com.atguigu.exam.context.UserContext.get());
+        System.out.println("║  ★ Service 层也无需传 userId，直接从 ThreadLocal 取！");
+        System.out.println("║  ★ 这就是 ThreadLocal 的威力：一次 set，整个请求链路共享");
+        System.out.println("╚══════════════════════════════════════════════════════╝");
+        System.out.println();
+
         // 【步骤 1】校验标题唯一性
         // 构建查询条件：检查同一类型下是否有相同标题的题目
         LambdaQueryWrapper<Question> queryWrapper = new LambdaQueryWrapper<>();

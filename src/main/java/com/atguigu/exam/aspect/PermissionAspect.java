@@ -74,6 +74,18 @@ public class PermissionAspect {
         // ======== 第2步：从 ThreadLocal 中获取当前用户信息（★ 不再依赖 HttpServletRequest） ========
         CurrentUser currentUser = UserContext.get();
 
+        // ━━━━━━━━ 【学习日志】权限校验入口 ━━━━━━━━
+        System.out.println("╔══════════════════════════════════════════════════════╗");
+        System.out.println("║  [2] PermissionAspect.@Around() - 权限校验切面         ║");
+        System.out.println("╠══════════════════════════════════════════════════════╣");
+        System.out.println("║  线程：" + Thread.currentThread().getName());
+        System.out.println("║  目标方法：" + methodName);
+        System.out.println("║  要求角色：" + java.util.Arrays.toString(requireRole.value()));
+        System.out.println("║  UserContext.get() = " + currentUser + "  ← 从 ThreadLocal 直接拿到了！");
+        System.out.println("║  ★ 注意：这里没有注入 HttpServletRequest，但依然能拿到用户信息");
+        System.out.println("╚══════════════════════════════════════════════════════╝");
+        System.out.println();
+
         if (currentUser == null) {
             log.warn("权限校验失败：ThreadLocal 中无用户信息 - 方法：{}", methodName);
             throw new RuntimeException("未登录或登录已过期");
@@ -95,6 +107,17 @@ public class PermissionAspect {
         // ======== 第4步：权限通过，执行原始方法 ========
         log.info("权限校验通过：用户 {} (角色={}) 执行 {}", 
                  currentUser.getUsername(), currentUser.getRole(), methodName);
+        
+        // ━━━━━━━━ 【学习日志】权限通过，放行 ━━━━━━━━
+        System.out.println("╔══════════════════════════════════════════════════════╗");
+        System.out.println("║  [2] PermissionAspect - 权限校验通过，proceed() ↓      ║");
+        System.out.println("╠══════════════════════════════════════════════════════╣");
+        System.out.println("║  线程：" + Thread.currentThread().getName() + "（还是同一个线程！）");
+        System.out.println("║  当前用户：" + currentUser.getUsername() + " (角色=" + currentUser.getRole() + ")");
+        System.out.println("║  ★ 即将执行 proceed() → 进入 Controller ...");
+        System.out.println("╚══════════════════════════════════════════════════════╝");
+        System.out.println();
+        
         return joinPoint.proceed();  // ← 这行才真正执行 Controller 方法
     }
 }

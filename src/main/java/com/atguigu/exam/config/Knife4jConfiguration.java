@@ -4,12 +4,7 @@ import io.swagger.v3.oas.models.info.Info;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-/**
- * projectName: com.atguigu.exam.config
- *
- * @author: 赵伟风
- * description:
- */
+
 @Configuration
 public class Knife4jConfiguration {
     /**

@@ -129,8 +129,30 @@ public class QuestionController {
     @RequireRole({"ADMIN"})               // 权限校验：只有管理员能创建题目
     @OperationLog("创建题目")              // 操作日志：自动记录谁、什么时候、做了什么
     public Result<Question> createQuestion(@RequestBody Question question) {
+        // ━━━━━━━━ 【学习日志】Controller 层入口 ━━━━━━━━
+        System.out.println("╔══════════════════════════════════════════════════════╗");
+        System.out.println("║  [3] QuestionController.createQuestion() - 业务层入口  ║");
+        System.out.println("╠══════════════════════════════════════════════════════╣");
+        System.out.println("║  线程：" + Thread.currentThread().getName() + "（和拦截器/AOP是同一个线程！）");
+        System.out.println("║  UserContext.get() = " + com.atguigu.exam.context.UserContext.get());
+        System.out.println("║  ★ 不需要注入 HttpServletRequest，直接拿到用户信息");
+        System.out.println("║  ★ 即将调用 questionService.saveQuestion() ↓");
+        System.out.println("╚══════════════════════════════════════════════════════╝");
+        System.out.println();
+        
 // 核心业务逻辑：调用服务层方法执行题目保存操作
         questionService.saveQuestion(question);
+        
+        // ━━━━━━━━ 【学习日志】Controller 层出口 ━━━━━━━━
+        System.out.println("╔══════════════════════════════════════════════════════╗");
+        System.out.println("║  [3] QuestionController.createQuestion() - 业务结束   ║");
+        System.out.println("╠══════════════════════════════════════════════════════╣");
+        System.out.println("║  线程：" + Thread.currentThread().getName() + "（仍然同一个线程！）");
+        System.out.println("║  UserContext.get() = " + com.atguigu.exam.context.UserContext.get());
+        System.out.println("║  ★ Service 执行完毕，返回 Controller，用户信息仍在 ThreadLocal 中");
+        System.out.println("╚══════════════════════════════════════════════════════╝");
+        System.out.println();
+        
         // 打印日志：记录接口调用完成及返回数据，便于问题排查与审计
         log.info("保存题目接口调用结束，回显数据为：{}",question);
         // 返回成功结果
