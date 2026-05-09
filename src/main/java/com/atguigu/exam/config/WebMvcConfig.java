@@ -83,8 +83,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**")
                 // 白名单：以下路径不需要登录
                 .excludePathPatterns(
-                        // ======== 认证相关（必须放行，否则无法登录） ========
+                        // ======== 认证相关（必须放行，否则无法登录/退出） ========
                         "/api/user/login",           // 登录接口
+                        "/api/user/logout",          // 退出登录接口（无需登录态，幂等操作）
                         "/api/user/register",        // 注册接口（预留）
 
                         // ======== 首页公开数据（无需登录就能看） ========

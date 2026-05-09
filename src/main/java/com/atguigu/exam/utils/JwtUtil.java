@@ -239,6 +239,40 @@ public class JwtUtil {
         }
     }
 
+    /**
+     * 获取 Token 的剩余有效时间（毫秒）
+     * 
+     * ==================== 用途：Redis 黑名单过期时间 ====================
+     * 
+     * 用户退出登录时，我们需要把 Token 加入 Redis 黑名单。
+     * Redis key 的过期时间应该 = Token 剩余的有效时间，这样：
+     * - Token 过期后，Redis 黑名单记录也被自动删除
+     * - 不会在 Redis 里留下永久的垃圾数据
+     * - 内存利用最大化
+     * 
+     * @param token JWT Token 字符串
+     * @return 剩余有效时间（毫秒），最小返回 0（Token 已过期或无意义）
+     */
+    public long getTokenRemainingTime(String token) {
+        try {
+            Claims claims = parseToken(token);
+            Date expiration = claims.getExpiration();
+            long remainingTime = expiration.getTime() - System.currentTimeMillis();
+            // 已经过期了，返回 0
+            return Math.max(remainingTime, 0);
+        } catch (ExpiredJwtException e) {
+            // 特殊处理：Token 已过期的异常，jjwt 仍然可以从中提取过期时间
+            // 直接用异常的 getClaims() 获取 Claims
+            Date expiration = e.getClaims().getExpiration();
+            long remainingTime = expiration.getTime() - System.currentTimeMillis();
+            return Math.max(remainingTime, 0);
+        } catch (JwtException e) {
+            // Token 格式错误、签名不对等情况，返回 0
+            log.warn("无法获取 Token 剩余时间：{}", e.getMessage());
+            return 0;
+        }
+    }
+
     // ========================== 请求头处理 ==========================
 
     /**

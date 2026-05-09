@@ -5,14 +5,19 @@ import com.atguigu.exam.common.Result;
 import com.atguigu.exam.context.CurrentUser;
 import com.atguigu.exam.context.UserContext;
 import com.atguigu.exam.service.UserService;
+import com.atguigu.exam.utils.JwtUtil;
 import com.atguigu.exam.vo.LoginRequestVo;
 import com.atguigu.exam.vo.LoginResponseVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -44,6 +49,20 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    /**
+     * StringRedisTemplate —— 用于 Redis 黑名单操作
+     */
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
+    /**
+     * Redis 黑名单 key 前缀（与 LoginInterceptor 保持一致）
+     */
+    private static final String LOGOUT_TOKEN_PREFIX = "logout:token:";
 
     /**
      * 用户登录
@@ -104,5 +123,66 @@ public class UserController {
             @Parameter(description = "用户ID") @PathVariable Long userId) {
 
         return Result.success(true);
+    }
+
+    /**
+     * 用户退出登录 —— JWT + Redis 黑名单方案
+     * 
+     * ==================== 实现思路 ====================
+     * 
+     * JWT 本身无法主动失效（签发后就是有效的），所以需要一个"黑名单"：
+     * 
+     * 1. 从请求头中提取当前 Token
+     * 2. 计算 Token 距离过期还有多久（剩余有效时间）
+     * 3. 把 Token 存入 Redis 黑名单，key = logout:token:{token}
+     * 4. 设置 Redis key 的过期时间 = Token 剩余有效时间
+     *    → Token 过期后，Redis 自动删除这条黑名单记录
+     *    → 不会在 Redis 里留下垃圾数据
+     * 
+     * ==================== 安全性说明 ====================
+     * 
+     * - 即使攻击者拿到了已退出的 Token，也会被 LoginInterceptor 拦截
+     * - Redis 黑名单 key 有 TTL，到期自动清理，不会无限增长
+     * - Token 过期后自动从黑名单消失，复用同样的 Token 也不可能
+     * 
+     * @param request HTTP 请求（用于获取 Authorization 头）
+     * @return 退出结果
+     */
+    @PostMapping("/logout")
+    @Operation(summary = "用户退出登录", description = "将当前 Token 加入 Redis 黑名单，实现主动失效")
+    public Result<String> logout(HttpServletRequest request) {
+        // ======== 第1步：从请求头提取 Token ========
+        String authHeader = request.getHeader(jwtUtil.getHeader());
+        String token = jwtUtil.extractToken(authHeader);
+
+        if (token == null) {
+            // 没有 Token 也算退出成功（幂等性）
+            log.info("退出登录：未携带 Token，无需处理");
+            return Result.success("已退出登录");
+        }
+
+        // ======== 第2步：计算 Token 剩余有效时间 ========
+        long remainingTime = jwtUtil.getTokenRemainingTime(token);
+
+        if (remainingTime <= 0) {
+            // Token 已经过期了，不需要加入黑名单（拦截器会直接拦掉过期 Token）
+            log.info("退出登录：Token 已过期，无需加入黑名单");
+            return Result.success("已退出登录");
+        }
+
+        // ======== 第3步：将 Token 加入 Redis 黑名单 ========
+        // key:   logout:token:eyJhbGciOiJIUzI1NiJ9...
+        // value: "1"（占位符，只要有 key 存在就表示被拉黑）
+        // TTL:   Token 剩余有效时间（毫秒）
+        String redisKey = LOGOUT_TOKEN_PREFIX + token;
+        stringRedisTemplate.opsForValue().set(
+                redisKey,
+                "1",                              // value 随意，只要有值就表示黑名单
+                remainingTime,
+                TimeUnit.MILLISECONDS
+        );
+
+        log.info("退出登录成功：Token 已加入 Redis 黑名单，{}ms 后自动过期", remainingTime);
+        return Result.success("已退出登录");
     }
 } 

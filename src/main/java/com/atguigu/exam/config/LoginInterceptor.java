@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
@@ -41,6 +42,23 @@ public class LoginInterceptor implements HandlerInterceptor {
     private JwtUtil jwtUtil;
 
     /**
+     * StringRedisTemplate —— 操作 Redis 的 String 类型数据
+     * 
+     * 为什么用 StringRedisTemplate 而不是 RedisTemplate？
+     * - 黑名单只需要存 key-value 字符串（token → "1"）
+     * - StringRedisTemplate 天然用 String 序列化，key 在 Redis 里可读
+     * - 不需要额外的 JSON 序列化开销
+     */
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+
+    /**
+     * Redis 黑名单 key 前缀
+     * 完整 key 格式：logout:token:eyJhbGciOiJIUzI1NiJ9...
+     */
+    private static final String LOGOUT_TOKEN_PREFIX = "logout:token:";
+
+    /**
      * 前置处理：在 Controller 方法执行前调用
      * 
      * 做了什么？
@@ -69,7 +87,7 @@ public class LoginInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        // ======== 第3步：验证 Token ========
+        // ======== 第3步：验证 Token（JWT 签名 + 过期时间）========
         if (!jwtUtil.validateToken(token)) {
             log.warn("Token 无效或已过期，请求被拦截 - URL: {}", request.getRequestURI());
             response.setContentType("application/json;charset=UTF-8");
@@ -78,7 +96,18 @@ public class LoginInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        // ======== 第4步：解析 Token → 构造 CurrentUser → 存入 ThreadLocal ========
+        // ======== 第4步：检查 Redis 黑名单（JWT + Redis 双重校验）========
+        // ★ JWT 本身是"签发后无法撤销"的，所以需要 Redis 黑名单来主动失效
+        // 用户退出登录后，Token 被加入 Redis 黑名单，即使 JWT 签名有效也会被拒绝
+        if (isTokenInBlacklist(token)) {
+            log.warn("Token 命中 Redis 黑名单（已退出登录），请求被拦截 - URL: {}", request.getRequestURI());
+            response.setContentType("application/json;charset=UTF-8");
+            response.setStatus(401);
+            response.getWriter().write("{\"code\":401,\"message\":\"Token已失效，请重新登录\"}");
+            return false;
+        }
+
+        // ======== 第5步：解析 Token → 构造 CurrentUser → 存入 ThreadLocal ========
         // ★ 优化点：之前是 request.setAttribute("userId", ...)，
         //          现在是 UserContext.set(currentUser)，后续整个链路都能直接获取。
         try {
@@ -173,5 +202,37 @@ public class LoginInterceptor implements HandlerInterceptor {
         System.out.println("║  ★ 如果这里不是 null，下个请求就会拿到脏数据！");
         System.out.println("╚══════════════════════════════════════════════════════╝");
         System.out.println();
+    }
+
+    /**
+     * 检查 Token 是否在 Redis 黑名单中
+     * 
+     * ==================== 为什么需要黑名单？ ====================
+     * 
+     * JWT 的一个固有问题：Token 签发后无法主动撤销。
+     * 即使调用了 logout，JWT 本身仍然有效——因为它是"自包含"的，
+     * 服务器没有存它的状态。
+     * 
+     * 解决方案：Redis 黑名单
+     * - 退出登录时，把 Token 存入 Redis（key = logout:token:xxx）
+     * - 后续请求先查 Redis：如果 key 存在 → Token 已被撤销 → 拒绝
+     * - Redis key 设置过期时间 = JWT 剩余有效时间 → 到期自动清理
+     * 
+     * ==================== 性能考量 ====================
+     * 
+     * 每个请求多一次 Redis 查询，但：
+     * - Redis 是内存数据库，单次 GET 只需 ~0.1ms
+     * - 黑名单中的 Token 是少数（只有主动退出的用户）
+     * - 大部分请求 Redis 返回 null（不存在），非常快
+     * 
+     * @param token JWT Token 字符串
+     * @return true=在黑名单中，false=不在
+     */
+    private boolean isTokenInBlacklist(String token) {
+        // Redis key 格式：logout:token:eyJhbGciOiJIUzI1NiJ9...
+        String redisKey = LOGOUT_TOKEN_PREFIX + token;
+        // hasKey 返回 true 表示 key 存在 → token 在黑名单中
+        Boolean hasKey = stringRedisTemplate.hasKey(redisKey);
+        return Boolean.TRUE.equals(hasKey);
     }
 }
