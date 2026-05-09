@@ -6,6 +6,7 @@ import com.atguigu.exam.context.CurrentUser;
 import com.atguigu.exam.context.UserContext;
 import com.atguigu.exam.service.UserService;
 import com.atguigu.exam.utils.JwtUtil;
+import com.atguigu.exam.vo.ChangePasswordVo;
 import com.atguigu.exam.vo.LoginRequestVo;
 import com.atguigu.exam.vo.LoginResponseVo;
 import io.swagger.v3.oas.annotations.Operation;
@@ -184,5 +185,73 @@ public class UserController {
 
         log.info("退出登录成功：Token 已加入 Redis 黑名单，{}ms 后自动过期", remainingTime);
         return Result.success("已退出登录");
+    }
+
+    /**
+     * 修改密码 —— 登录用户修改自己的密码
+     * 
+     * ==================== 完整流程 ====================
+     * 
+     * ┌─ LoginInterceptor.preHandle()（自动执行）────────────┐
+     * │  ① 校验 JWT Token                                  │
+     * │  ② 检查 Redis 黑名单                               │
+     * │  ③ 解析 Token → CurrentUser → UserContext.set()    │
+     * └────────────────────────────────────────────────────┘
+     *   ↓
+     * ┌─ changePassword() ──────────────────────────────────┐
+     * │  ④ 从 UserContext 获取 userId（不信任前端）          │
+     * │  ⑤ 从请求头提取 Token（用于后续拉黑）                │
+     * │  ⑥ 调用 Service：验旧密码 → 加密新密码 → 存数据库    │
+     * │  ⑦ 成功：将当前 Token 加入 Redis 黑名单             │
+     * │     → 修改密码后必须重新登录                        │
+     * └────────────────────────────────────────────────────┘
+     * 
+     * ==================== 安全设计要点 ====================
+     * 
+     * 1. userId 来自 ThreadLocal（UserContext），不由前端传递
+     *    → 防止 A 用户修改 B 用户的密码
+     * 
+     * 2. 修改密码后，当前 Token 立即拉黑
+     *    → 防止攻击者用旧 Token 继续操作
+     *    → 用户必须用新密码重新登录
+     * 
+     * 3. 接口不走白名单（经过 LoginInterceptor）
+     *    → 确保 UserContext 可用
+     *    → 确保 Token 有效才能改密码
+     * 
+     * @param request   HTTP 请求（获取 Authorization 头，用于拉黑 Token）
+     * @param requestVo 旧密码 + 新密码
+     * @return 操作结果
+     */
+    @PostMapping("/changePassword")
+    @Operation(summary = "修改密码", description = "登录用户修改自己的密码，修改后当前 Token 失效，需要重新登录")
+    public Result<String> changePassword(HttpServletRequest request,
+                                          @RequestBody ChangePasswordVo requestVo) {
+        // ======== 第1步：从 ThreadLocal 获取当前用户（不由前端传递！）========
+        CurrentUser currentUser = UserContext.require();
+        Long userId = currentUser.getUserId();
+
+        // ======== 第2步：调用 Service 层修改密码 ========
+        // 异常会被 GlobalExceptionHandler 捕获，统一返回错误响应
+        userService.changePassword(userId, requestVo);
+
+        // ======== 第3步：将当前 Token 加入 Redis 黑名单 ========
+        // 密码都改了，旧 Token 当然不能再用了——否则攻击者拿到旧 Token 还能操作
+        String authHeader = request.getHeader(jwtUtil.getHeader());
+        String token = jwtUtil.extractToken(authHeader);
+
+        if (token != null) {
+            long remainingTime = jwtUtil.getTokenRemainingTime(token);
+            if (remainingTime > 0) {
+                String redisKey = LOGOUT_TOKEN_PREFIX + token;
+                stringRedisTemplate.opsForValue().set(
+                        redisKey, "1", remainingTime, TimeUnit.MILLISECONDS
+                );
+                log.info("密码修改后 Token 已拉黑：userId={}, {}ms 后自动过期", userId, remainingTime);
+            }
+        }
+
+        log.info("密码修改成功：userId={}, 当前 Token 已失效", userId);
+        return Result.success("密码修改成功，请重新登录");
     }
 } 

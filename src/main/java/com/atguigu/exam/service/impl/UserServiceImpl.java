@@ -4,6 +4,7 @@ import com.atguigu.exam.entity.User;
 import com.atguigu.exam.mapper.UserMapper;
 import com.atguigu.exam.service.UserService;
 import com.atguigu.exam.utils.JwtUtil;
+import com.atguigu.exam.vo.ChangePasswordVo;
 import com.atguigu.exam.vo.LoginRequestVo;
 import com.atguigu.exam.vo.LoginResponseVo;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -80,6 +81,72 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         log.info("管理员登录成功：{} ({})，Token已生成", user.getUsername(), user.getRealName());
         return responseVo;
+    }
+
+    /**
+     * 修改密码
+     * 
+     * ==================== 业务流程 ====================
+     * 
+     * 1. 根据 userId 查询用户（userId 来自 ThreadLocal，不由前端传递）
+     * 2. BCrypt 校验 oldPassword 是否正确
+     * 3. BCrypt 加密 newPassword
+     * 4. 更新数据库
+     * 
+     * ==================== 安全设计 ====================
+     * 
+     * - userId 从 ThreadLocal（UserContext）获取，不信任前端传递
+     *   → 防止用户 A 修改用户 B 的密码（越权漏洞）
+     * 
+     * - 旧密码校验失败不暴露具体原因（与登录逻辑一致）
+     *   → 防止攻击者通过错误信息嗅探密码
+     * 
+     * - 新旧密码不能相同
+     *   → 防止"改了个寂寞"
+     * 
+     * - 密码修改成功后，Controller 层负责将当前 Token 加入 Redis 黑名单
+     *   → Service 层只关心业务逻辑，不耦合 HTTP 层（单一职责）
+     * 
+     * @param userId    当前登录用户ID
+     * @param requestVo 旧密码 + 新密码
+     */
+    @Override
+    public void changePassword(Long userId, ChangePasswordVo requestVo) {
+        // ========== 第1步：根据用户ID查询用户 ==========
+        // 注意：这里用 userId 查，而不是用 username 查
+        // userId 来自 ThreadLocal（UserContext），是登录时 JWT 里解析出来的，可信
+        User user = this.getById(userId);
+        if (user == null) {
+            log.error("修改密码失败：用户不存在 - userId={}", userId);
+            throw new RuntimeException("用户不存在");
+        }
+
+        // ========== 第2步：校验旧密码 ==========
+        // BCrypt.matches(明文, 密文) 内部流程：
+        //   1. 从密文中提取盐值（$2a$10$盐值$密文）
+        //   2. 用同样的盐值加密输入的明文
+        //   3. 比对两个密文是否相同
+        if (!passwordEncoder.matches(requestVo.getOldPassword(), user.getPassword())) {
+            log.warn("修改密码失败：旧密码错误 - userId={}", userId);
+            throw new RuntimeException("旧密码错误");
+        }
+
+        // ========== 第3步：校验新旧密码不能相同 ==========
+        if (requestVo.getOldPassword().equals(requestVo.getNewPassword())) {
+            log.warn("修改密码失败：新旧密码相同 - userId={}", userId);
+            throw new RuntimeException("新密码不能与旧密码相同");
+        }
+
+        // ========== 第4步：BCrypt 加密新密码 ==========
+        // encode() 内部：随机生成盐值 → 用盐值加密明文 → 返回 $2a$10$盐值$密文
+        // 每次 encode 生成的密文都不一样（因为盐值随机），但都能被 matches() 正确校验
+        String encodedNewPassword = passwordEncoder.encode(requestVo.getNewPassword());
+
+        // ========== 第5步：更新数据库 ==========
+        user.setPassword(encodedNewPassword);
+        this.updateById(user);
+
+        log.info("密码修改成功：userId={}, username={}", userId, user.getUsername());
     }
 
 } 

@@ -1,6 +1,7 @@
 package com.atguigu.exam.service;
 
 import com.atguigu.exam.entity.User;
+import com.atguigu.exam.vo.ChangePasswordVo;
 import com.atguigu.exam.vo.LoginRequestVo;
 import com.atguigu.exam.vo.LoginResponseVo;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -17,5 +18,13 @@ public interface UserService extends IService<User> {
      * @return 登录成功返回用户信息，失败抛异常
      */
     LoginResponseVo login(LoginRequestVo loginRequestVo);
+
+    /**
+     * 修改密码
+     * 
+     * @param userId      当前登录用户ID（从 ThreadLocal 获取，不由前端传递）
+     * @param requestVo   旧密码 + 新密码
+     */
+    void changePassword(Long userId, ChangePasswordVo requestVo);
 
 } 
