@@ -83,8 +83,16 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/api/**")
                 // 白名单：以下路径不需要登录
                 .excludePathPatterns(
+                        // ======== 认证相关（必须放行，否则无法登录） ========
                         "/api/user/login",           // 登录接口
                         "/api/user/register",        // 注册接口（预留）
+
+                        // ======== 首页公开数据（无需登录就能看） ========
+                        "/api/banners/**",           // 轮播图（含图片资源）
+                        "/api/notices/latest",       // 最新公告
+                        "/api/questions/popular",    // 热门题目
+                        "/api/stats/overview",       // 首页统计概览
+
                         // Swagger / Knife4j 文档路径放行
                         "/swagger-ui/**",
                         "/swagger-resources/**",
