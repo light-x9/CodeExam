@@ -1,6 +1,8 @@
 package com.atguigu.exam.aspect;
 
 import com.atguigu.exam.annotation.OperationLog;
+import com.atguigu.exam.context.CurrentUser;
+import com.atguigu.exam.context.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
@@ -15,32 +17,19 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 
 /**
- * 操作日志切面 —— 演示 AOP 的另一经典场景：统一日志记录
+ * 操作日志切面 —— AOP 统一日志记录 + ThreadLocal 用户上下文
  * 
- * ==================== @AfterReturning vs @Around ====================
+ * ==================== ThreadLocal 优化版 ====================
  * 
- * ┌─────────────────┬────────────────────────────────────────────────────┐
- * │   通知类型       │                     说明                           │
- * ├─────────────────┼────────────────────────────────────────────────────┤
- * │ @Before          │ 方法执行前，拿不到返回值                           │
- * │ @AfterReturning  │ 方法成功返回后，能拿到返回值（本类用的就是这个）     │
- * │ @AfterThrowing   │ 方法抛异常后，适合做异常记录                       │
- * │ @After           │ 无论成功/异常都执行（类似 finally）                 │
- * │ @Around          │ 最强大，包围整个方法执行（PermissionAspect用的）    │
- * └─────────────────┴────────────────────────────────────────────────────┘
+ * 之前：通过 request.getAttribute("username") 获取操作用户
+ *   问题：必须注入 HttpServletRequest，操作日志切面依赖了 Web 层对象
  * 
- * 这里选 @AfterReturning 的理由：
- * - 操作日志只需要记录"谁、在什么时候、做了什么、结果如何"
- * - 不需要阻止方法执行（和权限校验不同）
- * - 不影响正常业务逻辑
+ * 现在：通过 UserContext.get() 获取 CurrentUser（用户名、ID、角色）
+ *   优势：用户信息获取与 Servlet API 解耦，日志更丰富（可记录 userId 而不只是 username）
  * 
- * ==================== @Pointcut 的作用 ====================
+ * 注意：HttpServletRequest 仍保留用于获取请求 IP，这是合理的（IP 确实是 Web 层信息）
  * 
- * @Pointcut 给切点表达式起个名字，方便复用。
- * 比如这里定义了 logPointcut()，后面的 @AfterReturning 直接引用它，
- * 不用每处都写一遍长长的切点表达式。
- * 
- * @author 智能学习平台 - Level 4 AOP切面编程
+ * @author 智能学习平台 - ThreadLocal 用户上下文优化
  */
 @Slf4j
 @Aspect
@@ -52,9 +41,6 @@ public class OperationLogAspect {
 
     /**
      * 定义切点：所有贴了 @OperationLog 注解的方法
-     * 
-     * 切点表达式 "@annotation(com.atguigu.exam.annotation.OperationLog)"
-     * 意思是：拦截所有被 @OperationLog 标记的方法
      */
     @Pointcut("@annotation(com.atguigu.exam.annotation.OperationLog)")
     public void logPointcut() {
@@ -63,9 +49,6 @@ public class OperationLogAspect {
 
     /**
      * 后置返回通知：在方法正常返回后记录操作日志
-     * 
-     * 注意：pointcut 中必须用 @annotation(operationLog) 绑定 operationLog 参数
-     * 否则 Spring AOP 会报 "formal unbound in pointcut" 错误
      * 
      * @param joinPoint    被拦截的方法
      * @param operationLog 方法上的 @OperationLog 注解
@@ -78,11 +61,10 @@ public class OperationLogAspect {
         Method method = signature.getMethod();
         String methodName = method.getDeclaringClass().getSimpleName() + "." + method.getName();
 
-        // ======== 第2步：获取用户信息 ========
-        String username = (String) request.getAttribute("username");
-        if (username == null) {
-            username = "未知用户";
-        }
+        // ======== 第2步：从 ThreadLocal 获取用户信息（★ 不再从 request.getAttribute 获取） ========
+        CurrentUser currentUser = UserContext.get();
+        String username = (currentUser != null) ? currentUser.getUsername() : "未知用户";
+        Long userId = (currentUser != null) ? currentUser.getUserId() : null;
 
         // ======== 第3步：获取操作描述和方法参数 ========
         String operation = operationLog.value();
@@ -91,7 +73,7 @@ public class OperationLogAspect {
         // ======== 第4步：统一格式记录操作日志 ========
         // 这里打印到控制台，实际项目可以写到数据库（操作日志表）
         log.info("┌────────────────── 操作日志 ──────────────────");
-        log.info("│ 操作用户：{}", username);
+        log.info("│ 操作用户：{} (ID={})", username, userId);
         log.info("│ 操作描述：{}", operation);
         log.info("│ 调用方法：{}", methodName);
         log.info("│ 方法参数：{}", Arrays.toString(args));
@@ -100,7 +82,7 @@ public class OperationLogAspect {
         log.info("└──────────────────────────────────────────────");
 
         // ======== 扩展思考：实际项目还可以做什么？ ========
-        // - 把日志写入数据库（操作日志表：操作人、时间、IP、操作内容、参数）
+        // - 把日志写入数据库（操作日志表：操作人ID、操作人姓名、时间、IP、操作内容、参数）
         // - 异常操作告警（如短时间内大量删除操作 → 发钉钉/企微通知）
         // - 操作审计（谁、什么时候、改了什么数据）
         // - 操作回放（把参数记下来，后续可以复现问题）

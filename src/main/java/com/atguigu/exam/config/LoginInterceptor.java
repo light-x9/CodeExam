@@ -1,5 +1,7 @@
 package com.atguigu.exam.config;
 
+import com.atguigu.exam.context.CurrentUser;
+import com.atguigu.exam.context.UserContext;
 import com.atguigu.exam.utils.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,29 +13,25 @@ import org.springframework.web.servlet.HandlerInterceptor;
 /**
  * 登录拦截器 —— 保护后台接口，验证 JWT Token
  * 
- * ==================== 面试高频：拦截器(Interceptor) vs 过滤器(Filter) ====================
+ * ==================== ThreadLocal 优化版 ====================
  * 
- * ┌─────────────────────────────────────────────────────────────────────┐
- * │                        对比表格                                     │
- * ├──────────────┬─────────────────────┬────────────────────────────────┤
- * │    维度       │   Filter（过滤器）   │   Interceptor（拦截器）         │
- * ├──────────────┼─────────────────────┼────────────────────────────────┤
- * │ 所属规范      │ Servlet 规范         │ Spring MVC 规范                │
- * │ 能访问的上下文 │ 只能拿 request/response │ 可以拿 Spring Bean、Handler  │
- * │ 执行时机      │ 进入 Servlet 前       │ 进入 Controller 前后           │
- * │ 使用场景      │ 编码设置、安全过滤    │ 登录鉴权、日志记录、权限校验    │
- * └──────────────┴─────────────────────┴────────────────────────────────┘
+ * 之前：JWT 解析后通过 request.setAttribute 传递用户信息
+ *   问题：Controller / Service / AOP 都需要注入 HttpServletRequest 才能获取，
+ *        代码啰嗦，强依赖 Servlet API，无法在非 Web 层使用。
  * 
- * 我们这里选 Interceptor，因为：
- * 1. 需要注入 Spring Bean（JwtUtil）
- * 2. 需要知道请求要访问哪个 Controller 方法（可以按需放行）
+ * 现在：JWT 解析后构造 CurrentUser 对象 → 存入 UserContext（ThreadLocal）
+ *   优势：整个请求链路（拦截器 → AOP → Controller → Service）都能通过
+ *        UserContext.get() 直接获取，无需传参，无需注入 HttpServletRequest。
  * 
- * ==================== 拦截器执行流程 ====================
+ * ==================== 拦截器执行流程（优化后） ====================
  * 
- * 请求 → preHandle() → true → Controller → postHandle() → afterCompletion()
- *                ↘ false → 直接返回 401，不再走 Controller
+ * 请求 → preHandle()
+ *           ├─ JWT 校验成功 → UserContext.set(currentUser) → true → Controller
+ *           └─ JWT 校验失败 → 返回 401
+ *        → postHandle()      ← Controller 执行后
+ *        → afterCompletion() ← ★ UserContext.remove() 清理 ThreadLocal
  * 
- * @author 智能学习平台 - Level 3 无状态认证
+ * @author 智能学习平台 - ThreadLocal 用户上下文优化
  */
 @Slf4j
 @Component
@@ -49,7 +47,7 @@ public class LoginInterceptor implements HandlerInterceptor {
      * 1. 检查请求头是否带了 Authorization
      * 2. 提取 Bearer Token
      * 3. 验证 Token 有效
-     * 4. 把用户信息写入请求属性，方便后续使用
+     * 4. 解析 Token 中的用户信息 → 构造 CurrentUser → 存入 UserContext（ThreadLocal）
      * 
      * @return true=放行，false=拦截（返回401）
      */
@@ -80,18 +78,26 @@ public class LoginInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        // ======== 第4步：提取用户信息，放入请求属性 ========
-        // 后续 Controller 可以通过 request.getAttribute("userId") 获取当前用户
+        // ======== 第4步：解析 Token → 构造 CurrentUser → 存入 ThreadLocal ========
+        // ★ 优化点：之前是 request.setAttribute("userId", ...)，
+        //          现在是 UserContext.set(currentUser)，后续整个链路都能直接获取。
         try {
             Long userId = jwtUtil.getUserIdFromToken(token);
             String username = jwtUtil.getUsernameFromToken(token);
             String role = jwtUtil.getRoleFromToken(token);
 
-            request.setAttribute("userId", userId);
-            request.setAttribute("username", username);
-            request.setAttribute("role", role);
+            // 构造不可变的 CurrentUser 对象
+            CurrentUser currentUser = CurrentUser.builder()
+                    .userId(userId)
+                    .username(username)
+                    .role(role)
+                    .build();
 
-            log.debug("Token 验证通过：用户={}，角色={}，URL={}", username, role, request.getRequestURI());
+            // 存入当前线程的 ThreadLocal
+            UserContext.set(currentUser);
+
+            log.debug("ThreadLocal 已绑定用户：userId={}, username={}, role={}, URL={}",
+                      userId, username, role, request.getRequestURI());
         } catch (Exception e) {
             log.error("从 Token 提取用户信息失败", e);
             response.setContentType("application/json;charset=UTF-8");
@@ -101,5 +107,29 @@ public class LoginInterceptor implements HandlerInterceptor {
         }
 
         return true; // 放行
+    }
+
+    /**
+     * ★ 请求完成后回调 —— 清理 ThreadLocal
+     * 
+     * afterCompletion() 在以下情况下都会执行：
+     * - Controller 正常返回
+     * - Controller 抛出异常
+     * - 任何中间环节抛出异常
+     * 
+     * 这是一个"兜底"的清理点，确保无论请求成功还是失败，
+     * ThreadLocal 都会被清理，防止内存泄漏和线程复用时的脏数据问题。
+     * 
+     * 为什么不用 postHandle()？
+     * - postHandle() 只在 Controller 正常返回时执行，抛异常时不执行
+     * - afterCompletion() 无论成功/异常都会执行（类似 finally），是最可靠的清理点
+     */
+    @Override
+    public void afterCompletion(HttpServletRequest request, 
+                                HttpServletResponse response, 
+                                Object handler, Exception ex) {
+        // ★ 关键：必须在 afterCompletion 中清理 ThreadLocal
+        // 无论请求成功还是失败，都要移除当前线程的用户信息
+        UserContext.remove();
     }
 }

@@ -35,23 +35,25 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  *   范围：只拦截贴了 @RequireRole 的方法
  * 
  * ┌─────────────────────────────────────────────────────────────┐
- * │                    请求处理全流程                             │
+ * │                    请求处理全流程（ThreadLocal 优化后）        │
  * │                                                             │
  * │  用户请求                                                    │
  * │    ↓                                                        │
- * │  LoginInterceptor.preHandle()     ← Level 3：有Token吗？    │
+ * │  LoginInterceptor.preHandle()     ← JWT 校验 → UserContext.set() │
  * │    ├─ 无 Token → 401                                       │
- * │    └─ 有 Token → 解析出 userId/role → request.setAttribute  │
+ * │    └─ 有 Token → CurrentUser 存入 ThreadLocal               │
  * │    ↓                                                        │
- * │  PermissionAspect.@Around()        ← Level 4：角色够吗？    │
- * │    ├─ 角色不匹配 → 抛异常（全局异常处理器转JSON）            │
+ * │  PermissionAspect.@Around()        ← UserContext.get() → 角色校验 │
+ * │    ├─ 角色不匹配 → 抛异常                                  │
  * │    └─ 角色匹配 → proceed()                                 │
  * │    ↓                                                        │
- * │  Controller 方法执行业务逻辑                                  │
+ * │  Controller 方法执行业务逻辑          ← UserContext.get() 获取用户 │
  * │    ↓                                                        │
- * │  OperationLogAspect.@AfterReturning() ← Level 4：记录日志   │
+ * │  OperationLogAspect.@AfterReturning() ← UserContext.get() 记录日志 │
  * │    ↓                                                        │
  * │  返回结果给前端                                              │
+ * │    ↓                                                        │
+ * │  LoginInterceptor.afterCompletion() ← ★ UserContext.remove() 清理 │
  * └─────────────────────────────────────────────────────────────┘
  * 
  * @author 智能学习平台 - Level 3/4 拦截器与AOP
