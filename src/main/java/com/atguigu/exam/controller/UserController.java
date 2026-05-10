@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -61,6 +62,14 @@ public class UserController {
      */
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+
+    /**
+     * Redis 黑名单开关（与 LoginInterceptor 读取同一配置）
+     * - false（默认）：跳过 Redis 写操作，不连接 Redis
+     * - true：退出/改密时将 Token 写入 Redis 黑名单
+     */
+    @Value("${jwt.blacklist.enabled:false}")
+    private boolean blacklistEnabled;
 
     /**
      * Redis 黑名单 key 前缀（与 LoginInterceptor 保持一致）
@@ -216,15 +225,18 @@ public class UserController {
         // key:   logout:token:eyJhbGciOiJIUzI1NiJ9...
         // value: "1"（占位符，只要有 key 存在就表示被拉黑）
         // TTL:   Token 剩余有效时间（毫秒）
-        String redisKey = LOGOUT_TOKEN_PREFIX + token;
-        stringRedisTemplate.opsForValue().set(
-                redisKey,
-                "1",                              // value 随意，只要有值就表示黑名单
-                remainingTime,
-                TimeUnit.MILLISECONDS
-        );
-
-        log.info("退出登录成功：Token 已加入 Redis 黑名单，{}ms 后自动过期", remainingTime);
+        if (blacklistEnabled) {
+            String redisKey = LOGOUT_TOKEN_PREFIX + token;
+            stringRedisTemplate.opsForValue().set(
+                    redisKey,
+                    "1",                              // value 随意，只要有值就表示黑名单
+                    remainingTime,
+                    TimeUnit.MILLISECONDS
+            );
+            log.info("退出登录成功：Token 已加入 Redis 黑名单，{}ms 后自动过期", remainingTime);
+        } else {
+            log.info("退出登录成功：黑名单已关闭，Token 未写入 Redis");
+        }
         return Result.success("已退出登录");
     }
 
@@ -281,7 +293,7 @@ public class UserController {
         String authHeader = request.getHeader(jwtUtil.getHeader());
         String token = jwtUtil.extractToken(authHeader);
 
-        if (token != null) {
+        if (token != null && blacklistEnabled) {
             long remainingTime = jwtUtil.getTokenRemainingTime(token);
             if (remainingTime > 0) {
                 String redisKey = LOGOUT_TOKEN_PREFIX + token;

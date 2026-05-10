@@ -56,6 +56,8 @@ jwt:
   expiration: 86400000  # Token 有效期：24小时（单位：毫秒）
   header: Authorization  # HTTP 请求头名称
   prefix: "Bearer "  # Token 前缀（Bearer 后面有个空格）
+  blacklist:
+    enabled: false  # Redis 黑名单开关：开发环境 false（不依赖 Redis），生产环境 true（启用黑名单）
 
 logging:
   level:

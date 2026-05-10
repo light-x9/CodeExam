@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -51,6 +52,16 @@ public class LoginInterceptor implements HandlerInterceptor {
      */
     @Autowired
     private StringRedisTemplate stringRedisTemplate;
+
+    /**
+     * Redis 黑名单开关
+     * 
+     * 从 application.yml 读取 jwt.blacklist.enabled 配置：
+     * - false（默认）：跳过 Redis 黑名单校验，不连接 Redis，适合开发环境
+     * - true：启用 Redis 黑名单，退出登录后 Token 立即失效
+     */
+    @Value("${jwt.blacklist.enabled:false}")
+    private boolean blacklistEnabled;
 
     /**
      * Redis 黑名单 key 前缀
@@ -229,6 +240,10 @@ public class LoginInterceptor implements HandlerInterceptor {
      * @return true=在黑名单中，false=不在
      */
     private boolean isTokenInBlacklist(String token) {
+        // ★ 黑名单开关关闭 → 直接跳过，不连接 Redis，不等待 timeout
+        if (!blacklistEnabled) {
+            return false;
+        }
         // Redis key 格式：logout:token:eyJhbGciOiJIUzI1NiJ9...
         String redisKey = LOGOUT_TOKEN_PREFIX + token;
         // hasKey 返回 true 表示 key 存在 → token 在黑名单中
