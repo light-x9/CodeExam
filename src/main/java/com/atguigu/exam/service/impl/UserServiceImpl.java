@@ -1,5 +1,6 @@
 package com.atguigu.exam.service.impl;
 
+import com.atguigu.exam.common.BusinessException;
 import com.atguigu.exam.entity.User;
 import com.atguigu.exam.mapper.UserMapper;
 import com.atguigu.exam.service.UserService;
@@ -7,6 +8,7 @@ import com.atguigu.exam.utils.JwtUtil;
 import com.atguigu.exam.vo.ChangePasswordVo;
 import com.atguigu.exam.vo.LoginRequestVo;
 import com.atguigu.exam.vo.LoginResponseVo;
+import com.atguigu.exam.vo.RegisterRequestVo;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
@@ -147,6 +149,109 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         this.updateById(user);
 
         log.info("密码修改成功：userId={}, username={}", userId, user.getUsername());
+    }
+
+    /**
+     * 用户注册
+     * 
+     * ==================== 完整注册流程 ====================
+     * 
+     * ┌─ 第1步：校验两次密码是否一致 ──────────────────────┐
+     * │  password vs confirmPassword                        │
+     * │  → 不一致：throw BusinessException(400, "...")       │
+     * └────────────────────────────────────────────────────┘
+     *   ↓
+     * ┌─ 第2步：校验用户名是否重复 ────────────────────────┐
+     * │  用 QueryWrapper 查 users 表                        │
+     * │  → 已存在：throw BusinessException(409, "...")      │
+     * │    409 Conflict —— HTTP 冲突状态码，表示资源已存在   │
+     * └────────────────────────────────────────────────────┘
+     *   ↓
+     * ┌─ 第3步：BCrypt 加密密码 ───────────────────────────┐
+     * │  passwordEncoder.encode(明文) → $2a$10$...密文...   │
+     * │  数据库永远不会存明文密码                            │
+     * └────────────────────────────────────────────────────┘
+     *   ↓
+     * ┌─ 第4步：设置默认属性 ──────────────────────────────┐
+     * │  role   = "STUDENT"  （最小权限原则）               │
+     * │  status = "ACTIVE"   （新用户默认启用）              │
+     * │  注意：createTime / updateTime 由 BaseEntity 管理    │
+     * └────────────────────────────────────────────────────┘
+     *   ↓
+     * ┌─ 第5步：保存到数据库 ──────────────────────────────┐
+     * │  this.save(user) → MyBatis Plus 自动填充 createTime  │
+     * │  如果 username 撞了唯一索引，数据库抛异常             │
+     * │  → GlobalExceptionHandler 统一捕获并返回 500 错误    │
+     * └────────────────────────────────────────────────────┘
+     * 
+     * ==================== 为什么用 BusinessException 而不是 RuntimeException？ ====================
+     * 
+     * BusinessException 可以携带自定义状态码：
+     * - 409：用户名冲突（前端可据此提示"该用户名已被注册"）
+     * - 400：两次密码不一致（前端可据此高亮确认密码框）
+     * 
+     * 如果用 RuntimeException，只能统一返回 500，前端无法区分错误类型。
+     * 
+     * @param requestVo 注册请求参数
+     */
+    @Override
+    public void register(RegisterRequestVo requestVo) {
+
+        // ========== 第1步：校验两次密码是否一致 ==========
+        // 为什么不在 VO 层用注解校验？
+        // → Jakarta Validation 的注解是单字段校验（@NotBlank、@Size 等）
+        // → 跨字段校验（password vs confirmPassword）需要自定义注解，
+        //    但场景简单时写在 Service 层更直观，不需要额外造轮子
+        if (!requestVo.getPassword().equals(requestVo.getConfirmPassword())) {
+            log.warn("注册失败：两次密码不一致 - username={}", requestVo.getUsername());
+            // 400 Bad Request —— 前端提交的数据有误
+            throw new BusinessException(400, "两次输入的密码不一致");
+        }
+
+        // ========== 第2步：校验用户名是否重复 ==========
+        // 构建查询条件：username = ?
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("username", requestVo.getUsername());
+        // count() 只查数量，比 getOne() 性能更好（SELECT COUNT(1) vs SELECT *）
+        long count = this.count(queryWrapper);
+
+        if (count > 0) {
+            log.warn("注册失败：用户名已存在 - username={}", requestVo.getUsername());
+            // 409 Conflict —— 资源冲突，用户名已被占用
+            throw new BusinessException(409, "用户名已被注册，请更换");
+        }
+
+        // ========== 第3步：BCrypt 加密密码 ==========
+        // passwordEncoder.encode() 内部流程：
+        //   1. 随机生成一个盐值（Salt）
+        //   2. 用盐值 + BCrypt 算法加密明文
+        //   3. 返回格式化字符串：$2a$10$盐值$密文
+        // 每次调用 encode 生成的密文都不一样（盐值随机）
+        // 但 matches(明文, 密文) 总能正确比对（因为盐值存在密文里）
+        String encodedPassword = passwordEncoder.encode(requestVo.getPassword());
+
+        // ========== 第4步：组装 User 对象，设置默认属性 ==========
+        User user = new User();
+        user.setUsername(requestVo.getUsername());
+        user.setPassword(encodedPassword);          // ★ BCrypt 密文，不是明文！
+        user.setRole("STUDENT");                    // ★ 默认学生角色，遵循最小权限原则
+        user.setStatus("ACTIVE");                   // ★ 新用户默认启用
+        // realName 暂时为空，用户可在个人中心补充
+        // createTime / updateTime 由 BaseEntity 自动管理（MyBatis Plus 字段填充）
+
+        // ========== 第5步：保存到数据库 ==========
+        // this.save() 是 IService 提供的方法，等价于 baseMapper.insert(user)
+        // MyBatis Plus 会自动设置 createTime 和 updateTime（如果配置了自动填充）
+        boolean saved = this.save(user);
+
+        if (!saved) {
+            // 理论上不会走到这里，但防御性编程总不会错
+            log.error("注册失败：数据库保存失败 - username={}", requestVo.getUsername());
+            throw new BusinessException(500, "注册失败，请稍后重试");
+        }
+
+        log.info("用户注册成功：username={}, userId={}, role=STUDENT", 
+                 user.getUsername(), user.getId());
     }
 
 } 

@@ -9,10 +9,12 @@ import com.atguigu.exam.utils.JwtUtil;
 import com.atguigu.exam.vo.ChangePasswordVo;
 import com.atguigu.exam.vo.LoginRequestVo;
 import com.atguigu.exam.vo.LoginResponseVo;
+import com.atguigu.exam.vo.RegisterRequestVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -78,6 +80,45 @@ public class UserController {
         LoginResponseVo loginResponseVo = userService.login(loginRequestVo);
         // 用 Result 包装返回
         return Result.success(loginResponseVo);
+    }
+
+    /**
+     * 用户注册
+     * 
+     * ==================== 注册接口说明 ====================
+     * 
+     * 这个接口不需要登录（已加入 WebMvcConfig 拦截器白名单）。
+     * 
+     * @Valid 注解的作用：
+     * - 触发 Jakarta Validation 对 RegisterRequestVo 的校验
+     * - 如 @NotBlank、@Size 等注解会在进入方法前被校验
+     * - 校验失败时抛出 MethodArgumentNotValidException，
+     *   由 GlobalExceptionHandler 统一捕获并返回 400
+     * 
+     * 业务流程：
+     * 前端提交 {username, password, confirmPassword}
+     *   → Controller @Valid 校验基本格式
+     *   → Service.register() 校验业务规则（密码一致性、用户名唯一性）
+     *   → 成功：返回 Result.success("注册成功")
+     *   → 失败：抛 BusinessException → GlobalExceptionHandler 统一处理
+     * 
+     * @param requestVo 注册请求参数
+     * @return 注册结果
+     */
+    @PostMapping("/register")
+    @Operation(summary = "用户注册", description = "新用户注册，默认分配 STUDENT 角色，密码使用 BCrypt 加密存储")
+    public Result<String> register(
+            @RequestBody @Valid @Parameter(description = "注册请求参数", required = true) RegisterRequestVo requestVo) {
+
+        log.info("收到注册请求：username={}", requestVo.getUsername());
+
+        // 调用 Service 层处理注册逻辑
+        // 成功：正常返回
+        // 失败：Service 层抛 BusinessException → GlobalExceptionHandler 统一捕获
+        userService.register(requestVo);
+
+        // 注册成功，返回友好的提示信息
+        return Result.success("注册成功", "注册成功，您现在可以登录了");
     }
     
     /**
