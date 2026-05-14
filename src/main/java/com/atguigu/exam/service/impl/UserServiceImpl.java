@@ -208,7 +208,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(400, "两次输入的密码不一致");
         }
 
-        // ========== 第2步：校验用户名是否重复 ==========
+        // ========== 第2步：校验用户名是否包含敏感词admin（不区分大小写） ==========
+        if (requestVo.getUsername().toLowerCase().contains("admin")) {
+            log.warn("注册失败：用户名包含敏感词 - username={}", requestVo.getUsername());
+            throw new BusinessException(400, "用户名不合法");
+        }
+
+        // ========== 第3步：校验用户名是否重复 ==========
         // 构建查询条件：username = ?
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("username", requestVo.getUsername());
