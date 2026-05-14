@@ -161,41 +161,63 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * │  → 不一致：throw BusinessException(400, "...")       │
      * └────────────────────────────────────────────────────┘
      *   ↓
-     * ┌─ 第2步：校验用户名是否重复 ────────────────────────┐
-     * │  用 QueryWrapper 查 users 表                        │
+     * ┌─ 第2步：校验敏感词 ────────────────────────────────┐
+     * │  用户名不能包含 "admin"（不区分大小写）              │
+     * │  → 包含：throw BusinessException(400, "用户名不合法") │
+     * └────────────────────────────────────────────────────┘
+     *   ↓
+     * ┌─ 第3步：校验用户名是否重复 ────────────────────────┐
+     * │  用 QueryWrapper 查 users 表，count() 只查数量       │
      * │  → 已存在：throw BusinessException(409, "...")      │
      * │    409 Conflict —— HTTP 冲突状态码，表示资源已存在   │
      * └────────────────────────────────────────────────────┘
      *   ↓
-     * ┌─ 第3步：BCrypt 加密密码 ───────────────────────────┐
+     * ┌─ 第4步：BCrypt 加密密码 ───────────────────────────┐
      * │  passwordEncoder.encode(明文) → $2a$10$...密文...   │
      * │  数据库永远不会存明文密码                            │
      * └────────────────────────────────────────────────────┘
      *   ↓
-     * ┌─ 第4步：设置默认属性 ──────────────────────────────┐
+     * ┌─ 第5步：设置默认属性 ──────────────────────────────┐
      * │  role   = "STUDENT"  （最小权限原则）               │
      * │  status = "ACTIVE"   （新用户默认启用）              │
      * │  注意：createTime / updateTime 由 BaseEntity 管理    │
      * └────────────────────────────────────────────────────┘
      *   ↓
-     * ┌─ 第5步：保存到数据库 ──────────────────────────────┐
+     * ┌─ 第6步：保存到数据库 ──────────────────────────────┐
      * │  this.save(user) → MyBatis Plus 自动填充 createTime  │
      * │  如果 username 撞了唯一索引，数据库抛异常             │
      * │  → GlobalExceptionHandler 统一捕获并返回 500 错误    │
+     * └────────────────────────────────────────────────────┘
+     *   ↓
+     * ┌─ 第7步：生成 JWT Token，注册成功即自动登录 ────────┐
+     * │  jwtUtil.generateToken(id, username, role)           │
+     * │  组装 LoginResponseVo（userId + username + token）   │
+     * │  前端收到后存 localStorage，直接跳转首页             │
+     * │  无需用户再手动登录一次                              │
      * └────────────────────────────────────────────────────┘
      * 
      * ==================== 为什么用 BusinessException 而不是 RuntimeException？ ====================
      * 
      * BusinessException 可以携带自定义状态码：
+     * - 400：参数校验失败（如密码不一致、用户名含敏感词……）
      * - 409：用户名冲突（前端可据此提示"该用户名已被注册"）
-     * - 400：两次密码不一致（前端可据此高亮确认密码框）
      * 
      * 如果用 RuntimeException，只能统一返回 500，前端无法区分错误类型。
      * 
-     * @param requestVo 注册请求参数
+     * ==================== 密码安全性 ====================
+     * 
+     * passwordEncoder.encode() 内部流程：
+     *   1. 随机生成一个盐值（Salt）
+     *   2. 用盐值 + BCrypt 算法加密明文
+     *   3. 返回格式化字符串：$2a$10$盐值$密文
+     * 每次调用 encode 生成的密文都不一样（盐值随机）
+     * 但 matches(明文, 密文) 总能正确比对（因为盐值存在密文里）
+     * 
+     * @param requestVo 注册请求参数（用户名、密码、确认密码）
+     * @return 登录响应（含 JWT Token），注册成功即自动登录
      */
     @Override
-    public void register(RegisterRequestVo requestVo) {
+    public LoginResponseVo register(RegisterRequestVo requestVo) {
 
         // ========== 第1步：校验两次密码是否一致 ==========
         // 为什么不在 VO 层用注解校验？
@@ -209,6 +231,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
 
         // ========== 第2步：校验用户名是否包含敏感词admin（不区分大小写） ==========
+        // toLowerCase() 先把用户名转成全小写，再 contains("admin") 判断是否包含
+        // 这样不管用户输入的是 Admin、ADMIN、aDmIn……只要含有这5个字母就算违规
         if (requestVo.getUsername().toLowerCase().contains("admin")) {
             log.warn("注册失败：用户名包含敏感词 - username={}", requestVo.getUsername());
             throw new BusinessException(400, "用户名不合法");
@@ -227,16 +251,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(409, "用户名已被注册，请更换");
         }
 
-        // ========== 第3步：BCrypt 加密密码 ==========
-        // passwordEncoder.encode() 内部流程：
-        //   1. 随机生成一个盐值（Salt）
-        //   2. 用盐值 + BCrypt 算法加密明文
-        //   3. 返回格式化字符串：$2a$10$盐值$密文
-        // 每次调用 encode 生成的密文都不一样（盐值随机）
-        // 但 matches(明文, 密文) 总能正确比对（因为盐值存在密文里）
+        // ========== 第4步：BCrypt 加密密码 ==========
         String encodedPassword = passwordEncoder.encode(requestVo.getPassword());
 
-        // ========== 第4步：组装 User 对象，设置默认属性 ==========
+        // ========== 第5步：组装 User 对象，设置默认属性 ==========
         User user = new User();
         user.setUsername(requestVo.getUsername());
         user.setPassword(encodedPassword);          // ★ BCrypt 密文，不是明文！
@@ -245,7 +263,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // realName 暂时为空，用户可在个人中心补充
         // createTime / updateTime 由 BaseEntity 自动管理（MyBatis Plus 字段填充）
 
-        // ========== 第5步：保存到数据库 ==========
+        // ========== 第6步：保存到数据库 ==========
         // this.save() 是 IService 提供的方法，等价于 baseMapper.insert(user)
         // MyBatis Plus 会自动设置 createTime 和 updateTime（如果配置了自动填充）
         boolean saved = this.save(user);
@@ -256,8 +274,23 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(500, "注册失败，请稍后重试");
         }
 
-        log.info("用户注册成功：username={}, userId={}, role=STUDENT", 
+        // ========== 第7步：生成 JWT Token，注册成功即自动登录 ==========
+        // JWT 里放了 userId、username、role 三样信息
+        // 后续请求只要带上这个 Token，服务器就能知道是谁、什么角色
+        // 前端收到 LoginResponseVo 后存入 localStorage，下一次请求时
+        // request.js 拦截器会自动从 localStorage 取出 Token 放进 Authorization 请求头
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
+
+        LoginResponseVo responseVo = new LoginResponseVo();
+        responseVo.setUserId(user.getId());
+        responseVo.setUsername(user.getUsername());
+        responseVo.setRealName(user.getRealName());
+        responseVo.setRole(user.getRole());
+        responseVo.setToken(token);
+
+        log.info("用户注册成功并自动登录：username={}, userId={}, role=STUDENT", 
                  user.getUsername(), user.getId());
+        return responseVo;
     }
 
 } 

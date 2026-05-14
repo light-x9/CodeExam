@@ -115,19 +115,18 @@ public class UserController {
      * @return 注册结果
      */
     @PostMapping("/register")
-    @Operation(summary = "用户注册", description = "新用户注册，默认分配 STUDENT 角色，密码使用 BCrypt 加密存储")
-    public Result<String> register(
+    @Operation(summary = "用户注册", description = "新用户注册，默认分配 STUDENT 角色，密码使用 BCrypt 加密存储，注册成功后自动登录并返回 JWT Token")
+    public Result<LoginResponseVo> register(
             @RequestBody @Valid @Parameter(description = "注册请求参数", required = true) RegisterRequestVo requestVo) {
 
         log.info("收到注册请求：username={}", requestVo.getUsername());
 
-        // 调用 Service 层处理注册逻辑
-        // 成功：正常返回
+        // 调用 Service 层处理注册逻辑（校验 + 保存 + 生成 JWT）
+        // 成功：返回 LoginResponseVo（含 Token）
         // 失败：Service 层抛 BusinessException → GlobalExceptionHandler 统一捕获
-        userService.register(requestVo);
+        LoginResponseVo loginResponseVo = userService.register(requestVo);
 
-        // 注册成功，返回友好的提示信息
-        return Result.success("注册成功", "注册成功，您现在可以登录了");
+        return Result.success(loginResponseVo);
     }
     
     /**

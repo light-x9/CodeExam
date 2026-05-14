@@ -34,10 +34,12 @@ public interface UserService extends IService<User> {
      * ==================== 注册流程 ====================
      * 
      * 1. 校验两次密码是否一致
-     * 2. 校验用户名是否重复
-     * 3. BCrypt 加密密码
-     * 4. 设置默认角色 = STUDENT、默认状态 = ACTIVE
-     * 5. 保存到数据库
+     * 2. 校验用户名是否包含敏感词
+     * 3. 校验用户名是否重复
+     * 4. BCrypt 加密密码
+     * 5. 设置默认角色 = STUDENT、默认状态 = ACTIVE
+     * 6. 保存到数据库
+     * 7. 生成 JWT Token 并返回（注册成功自动登录）
      * 
      * ==================== 安全性 ====================
      * 
@@ -46,8 +48,9 @@ public interface UserService extends IService<User> {
      * - 用户名唯一性由 Service 层校验 + 数据库唯一索引双层保障
      * 
      * @param requestVo 注册请求参数（用户名、密码、确认密码）
+     * @return 登录响应（含 JWT Token），注册成功即自动登录
      * @throws com.atguigu.exam.common.BusinessException 校验失败时抛出
      */
-    void register(RegisterRequestVo requestVo);
+    LoginResponseVo register(RegisterRequestVo requestVo);
 
 } 
