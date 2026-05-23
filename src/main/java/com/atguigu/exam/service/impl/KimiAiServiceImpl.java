@@ -3,6 +3,8 @@ package com.atguigu.exam.service.impl;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.atguigu.exam.common.BusinessException;
+import com.atguigu.exam.common.ErrorCode;
 import com.atguigu.exam.config.properties.KimiApiProperties;
 import com.atguigu.exam.service.KimiAiService;
 import com.atguigu.exam.vo.AiGenerateRequestVo;
@@ -118,13 +120,15 @@ public class KimiAiServiceImpl implements KimiAiService {
                     Thread.sleep(1000);
                 } else {
                     // 3.3 如果已经是最后一次重试，直接抛出异常，不再继续尝试
-                    throw new RuntimeException("已经重试了%s次调用kimi的模型，但是依然没有正确的返回结果！".formatted(maxTry));
+                    throw new BusinessException(ErrorCode.AI_GENERATE_FAILED,
+                        "已经重试了%s次调用kimi的模型，但是依然没有正确的返回结果！".formatted(maxTry));
                 }
             }
         }
 
         // 4. 循环结束仍未获取到有效结果 → 抛出最终异常
-        throw new RuntimeException("已经重试了%s次调用kimi的模型，但是依然没有正确的返回结果！".formatted(maxTry));
+        throw new BusinessException(ErrorCode.AI_GENERATE_FAILED,
+            "已经重试了%s次调用kimi的模型，但是依然没有正确的返回结果！".formatted(maxTry));
     }
 
 

@@ -1,5 +1,7 @@
 package com.atguigu.exam.service.impl;
 
+import com.atguigu.exam.common.BusinessException;
+import com.atguigu.exam.common.ErrorCode;
 import com.atguigu.exam.entity.Video;
 import com.atguigu.exam.entity.VideoCategory;
 import com.atguigu.exam.mapper.VideoCategoryMapper;
@@ -96,10 +98,10 @@ public class VideoCategoryServiceImpl implements VideoCategoryService {
         if (category.getParentId() != null && category.getParentId() > 0) {
             VideoCategory parentCategory = videoCategoryMapper.selectById(category.getParentId());
             if (parentCategory == null) {
-                throw new RuntimeException("父级分类不存在");
+                throw new BusinessException(ErrorCode.PARENT_CATEGORY_NOT_FOUND);
             }
             if (parentCategory.getStatus() == 0) {
-                throw new RuntimeException("父级分类已被禁用");
+                throw new BusinessException(ErrorCode.PARENT_CATEGORY_DISABLED);
             }
         }
         
@@ -110,7 +112,7 @@ public class VideoCategoryServiceImpl implements VideoCategoryService {
                 .eq(VideoCategory::getParentId, category.getParentId() == null ? 0 : category.getParentId())
         );
         if (count > 0) {
-            throw new RuntimeException("同级分类下已存在相同名称的分类");
+            throw new BusinessException(ErrorCode.CATEGORY_DUPLICATE);
         }
         
         // 设置默认值
@@ -131,20 +133,20 @@ public class VideoCategoryServiceImpl implements VideoCategoryService {
     public void updateCategory(VideoCategory category) {
         VideoCategory existingCategory = videoCategoryMapper.selectById(category.getId());
         if (existingCategory == null) {
-            throw new RuntimeException("分类不存在");
+            throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
         }
         
         // 验证父级分类
         if (category.getParentId() != null && category.getParentId() > 0) {
             // 不能将自己设为父级分类
             if (category.getParentId().equals(category.getId())) {
-                throw new RuntimeException("不能将自己设为父级分类");
+                throw new BusinessException(ErrorCode.CATEGORY_SELF_PARENT);
             }
             
             // 验证父级分类是否存在
             VideoCategory parentCategory = videoCategoryMapper.selectById(category.getParentId());
             if (parentCategory == null) {
-                throw new RuntimeException("父级分类不存在");
+                throw new BusinessException(ErrorCode.PARENT_CATEGORY_NOT_FOUND);
             }
         }
         
@@ -156,7 +158,7 @@ public class VideoCategoryServiceImpl implements VideoCategoryService {
                 .ne(VideoCategory::getId, category.getId())
         );
         if (count > 0) {
-            throw new RuntimeException("同级分类下已存在相同名称的分类");
+            throw new BusinessException(ErrorCode.CATEGORY_DUPLICATE);
         }
         
         videoCategoryMapper.updateById(category);
@@ -166,7 +168,7 @@ public class VideoCategoryServiceImpl implements VideoCategoryService {
     public void deleteCategory(Long id) {
         VideoCategory category = videoCategoryMapper.selectById(id);
         if (category == null) {
-            throw new RuntimeException("分类不存在");
+            throw new BusinessException(ErrorCode.CATEGORY_NOT_FOUND);
         }
         
         // 检查是否有子分类
@@ -175,7 +177,7 @@ public class VideoCategoryServiceImpl implements VideoCategoryService {
                 .eq(VideoCategory::getParentId, id)
         );
         if (childCount > 0) {
-            throw new RuntimeException("该分类下有子分类，无法删除");
+            throw new BusinessException(ErrorCode.CATEGORY_HAS_CHILDREN);
         }
         
         // 检查是否有视频
@@ -184,7 +186,7 @@ public class VideoCategoryServiceImpl implements VideoCategoryService {
                 .eq(Video::getCategoryId, id)
         );
         if (videoCount > 0) {
-            throw new RuntimeException("该分类下有视频，无法删除");
+            throw new BusinessException(ErrorCode.CATEGORY_HAS_VIDEOS);
         }
         
         videoCategoryMapper.deleteById(id);

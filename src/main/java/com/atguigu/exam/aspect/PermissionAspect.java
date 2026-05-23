@@ -1,6 +1,8 @@
 package com.atguigu.exam.aspect;
 
 import com.atguigu.exam.annotation.RequireRole;
+import com.atguigu.exam.common.BusinessException;
+import com.atguigu.exam.common.ErrorCode;
 import com.atguigu.exam.context.CurrentUser;
 import com.atguigu.exam.context.UserContext;
 import lombok.extern.slf4j.Slf4j;
@@ -88,7 +90,7 @@ public class PermissionAspect {
 
         if (currentUser == null) {
             log.warn("权限校验失败：ThreadLocal 中无用户信息 - 方法：{}", methodName);
-            throw new RuntimeException("未登录或登录已过期");
+            throw new BusinessException(ErrorCode.NOT_LOGIN);
         }
 
         // ======== 第3步：比对角色 —— 当前用户角色是否在允许列表中 ========
@@ -98,8 +100,8 @@ public class PermissionAspect {
         if (!currentUser.hasAnyRole(requiredRoles)) {
             log.warn("权限不足：用户 {} (角色={}) 尝试执行 {}，要求角色：{}",
                      currentUser.getUsername(), currentUser.getRole(), methodName, Arrays.toString(requiredRoles));
-            throw new RuntimeException(
-                String.format("权限不足：需要 %s 角色，当前为 %s",
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED,
+                String.format("需要 %s 角色，当前为 %s",
                               Arrays.toString(requiredRoles), currentUser.getRole())
             );
         }

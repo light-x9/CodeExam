@@ -1,5 +1,7 @@
 package com.atguigu.exam.service.impl;
 
+import com.atguigu.exam.common.BusinessException;
+import com.atguigu.exam.common.ErrorCode;
 import com.atguigu.exam.entity.Video;
 import com.atguigu.exam.entity.VideoCategory;
 import com.atguigu.exam.entity.VideoLike;
@@ -70,12 +72,12 @@ public class VideoServiceImpl implements VideoService {
     public Video getVideoDetail(Long id, HttpServletRequest request) {
         Video video = videoMapper.selectById(id);
         if (video == null) {
-            throw new RuntimeException("视频不存在");
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
-        
+
         // 只有已发布的视频才能查看详情
         if (video.getStatus() != Video.STATUS_PUBLISHED) {
-            throw new RuntimeException("视频未发布或已下架");
+            throw new BusinessException(ErrorCode.VIDEO_NOT_PUBLISHED);
         }
         
         // 获取分类名称并赋值
@@ -143,7 +145,7 @@ public class VideoServiceImpl implements VideoService {
     @Transactional
     public boolean toggleVideoLike(Long videoId, HttpServletRequest request) {
         if (request == null) {
-            throw new RuntimeException("请求信息为空");
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "请求信息为空");
         }
         
         String userIp = IpUtils.getClientIp(request);
@@ -183,7 +185,7 @@ public class VideoServiceImpl implements VideoService {
         Map<String, Object> result = new HashMap<>();
         
         if (videoFile == null || videoFile.isEmpty()) {
-            throw new RuntimeException("视频文件不能为空");
+            throw new BusinessException(ErrorCode.VIDEO_FILE_EMPTY);
         }
         
         try {
@@ -216,7 +218,7 @@ public class VideoServiceImpl implements VideoService {
             result.put("videoId", video.getId());
             
         } catch (Exception e) {
-            throw new RuntimeException("视频上传失败：" + e.getMessage());
+            throw new BusinessException(ErrorCode.VIDEO_UPLOAD_FAILED, e.getMessage());
         }
         
         return result;
@@ -242,23 +244,23 @@ public class VideoServiceImpl implements VideoService {
         Map<String, Object> result = new HashMap<>();
         
         if (videoFile == null || videoFile.isEmpty()) {
-            throw new RuntimeException("视频文件不能为空");
+            throw new BusinessException(ErrorCode.VIDEO_FILE_EMPTY);
         }
-        
+
         try {
             // 上传视频文件 todo: 文件上传实现以后开放即可！
             Map<String, Object> videoUploadResult = null;
                     //fileUploadService.uploadFile(videoFile, "videos/original/");
             video.setFileUrl(videoUploadResult.get("url").toString());
             video.setFileSize(videoFile.getSize());
-            
+
             // 上传封面文件（可选）
             if (coverFile != null && !coverFile.isEmpty()) {
                 Map<String, Object> coverUploadResult = null;
                        // fileUploadService.uploadFile(coverFile, "videos/covers/");
                 video.setCoverUrl(coverUploadResult.get("url").toString());
             }
-            
+
             // 设置管理员上传默认值
             video.setUploaderType(Video.UPLOADER_TYPE_ADMIN);
             video.setAdminId(adminId);
@@ -269,16 +271,16 @@ public class VideoServiceImpl implements VideoService {
             video.setLikeCount(0L);
             video.setCreatedAt(LocalDateTime.now());
             video.setUpdatedAt(LocalDateTime.now());
-            
+
             // 保存视频信息
             videoMapper.insert(video);
-            
+
             result.put("success", true);
             result.put("message", "视频上传成功");
             result.put("videoId", video.getId());
-            
+
         } catch (Exception e) {
-            throw new RuntimeException("视频上传失败：" + e.getMessage());
+            throw new BusinessException(ErrorCode.VIDEO_UPLOAD_FAILED, e.getMessage());
         }
         
         return result;
@@ -289,15 +291,15 @@ public class VideoServiceImpl implements VideoService {
     public void auditVideo(Long videoId, Integer status, String reason, Long adminId) {
         Video video = videoMapper.selectById(videoId);
         if (video == null) {
-            throw new RuntimeException("视频不存在");
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
         
         if (video.getStatus() != Video.STATUS_PENDING) {
-            throw new RuntimeException("只能审核待审核状态的视频");
+            throw new BusinessException(ErrorCode.VIDEO_AUDIT_ERROR);
         }
         
         if (status == Video.STATUS_REJECTED && (reason == null || reason.trim().isEmpty())) {
-            throw new RuntimeException("拒绝审核时必须填写拒绝原因");
+            throw new BusinessException(ErrorCode.VIDEO_REJECT_REASON_REQUIRED);
         }
         
         // 更新审核信息
@@ -315,11 +317,11 @@ public class VideoServiceImpl implements VideoService {
     public void offlineVideo(Long videoId, Long adminId) {
         Video video = videoMapper.selectById(videoId);
         if (video == null) {
-            throw new RuntimeException("视频不存在");
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
         
         if (video.getStatus() != Video.STATUS_PUBLISHED) {
-            throw new RuntimeException("只能下架已发布的视频");
+            throw new BusinessException(ErrorCode.VIDEO_OFFLINE_ERROR);
         }
         
         video.setStatus(Video.STATUS_OFFLINE);
@@ -335,7 +337,7 @@ public class VideoServiceImpl implements VideoService {
     public void deleteVideo(Long videoId) {
         Video video = videoMapper.selectById(videoId);
         if (video == null) {
-            throw new RuntimeException("视频不存在");
+            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
         
         // 删除相关数据

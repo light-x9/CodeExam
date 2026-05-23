@@ -1,6 +1,8 @@
 package com.atguigu.exam.service.impl;
 
 
+import com.atguigu.exam.common.BusinessException;
+import com.atguigu.exam.common.ErrorCode;
 import com.atguigu.exam.entity.Paper;
 import com.atguigu.exam.entity.PaperQuestion;
 import com.atguigu.exam.mapper.PaperMapper;
@@ -103,11 +105,11 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
                 })
                 .collect(Collectors.toList());
         if (paperQuestionList.isEmpty()) {
-            throw new RuntimeException("构建试卷 - 题目关联关系失败：关联数据为空！");
+            throw new BusinessException(ErrorCode.PAPER_CREATE_FAILED, "试卷题目关联数据为空");
         }
         boolean saveResult = paperQuestionService.saveBatch(paperQuestionList);
         if (!saveResult) {
-            throw new RuntimeException("保存试卷 - 题目关联关系失败！");
+            throw new BusinessException(ErrorCode.PAPER_CREATE_FAILED, "保存试卷题目关联失败");
         }
         log.info("手动组卷成功，创建的试卷对象信息为：{}", paper);
         return paper;

@@ -1,6 +1,7 @@
 package com.atguigu.exam.service.impl;
 
 import com.atguigu.exam.common.BusinessException;
+import com.atguigu.exam.common.ErrorCode;
 import com.atguigu.exam.entity.User;
 import com.atguigu.exam.mapper.UserMapper;
 import com.atguigu.exam.service.UserService;
@@ -48,14 +49,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         if (user == null) {
             log.warn("登录失败：用户名不存在 - {}", loginRequestVo.getUsername());
-            throw new RuntimeException("用户名或密码错误");
+            throw new BusinessException(ErrorCode.USERNAME_OR_PASSWORD_ERROR);
         }
 
         // ========== 第2步：校验角色 —— 只有管理员才能登录后台 ==========
         if (!"ADMIN".equalsIgnoreCase(user.getRole())) {
-            log.warn("登录失败：非管理员用户尝试登录后台 - {} (role={})", 
+            log.warn("登录失败：非管理员用户尝试登录后台 - {} (role={})",
                      loginRequestVo.getUsername(), user.getRole());
-            throw new RuntimeException("无权限：仅管理员可登录后台");
+            throw new BusinessException(ErrorCode.PERMISSION_DENIED, "仅管理员可登录后台");
         }
 
         // ========== 第3步：BCrypt 加密比对密码 ==========
@@ -64,7 +65,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // matches() 内部：把输入的明文用同样的盐值加密一次 → 比对结果
         if (!passwordEncoder.matches(loginRequestVo.getPassword(), user.getPassword())) {
             log.warn("登录失败：密码错误 - {}", loginRequestVo.getUsername());
-            throw new RuntimeException("用户名或密码错误");
+            throw new BusinessException(ErrorCode.USERNAME_OR_PASSWORD_ERROR);
         }
 
         // ========== 第4步：生成 JWT Token（Level 3 新增）==========
@@ -120,7 +121,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user = this.getById(userId);
         if (user == null) {
             log.error("修改密码失败：用户不存在 - userId={}", userId);
-            throw new RuntimeException("用户不存在");
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
         // ========== 第2步：校验旧密码 ==========
@@ -130,13 +131,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         //   3. 比对两个密文是否相同
         if (!passwordEncoder.matches(requestVo.getOldPassword(), user.getPassword())) {
             log.warn("修改密码失败：旧密码错误 - userId={}", userId);
-            throw new RuntimeException("旧密码错误");
+            throw new BusinessException(ErrorCode.OLD_PASSWORD_ERROR);
         }
 
         // ========== 第3步：校验新旧密码不能相同 ==========
         if (requestVo.getOldPassword().equals(requestVo.getNewPassword())) {
             log.warn("修改密码失败：新旧密码相同 - userId={}", userId);
-            throw new RuntimeException("新密码不能与旧密码相同");
+            throw new BusinessException(ErrorCode.PASSWORD_SAME_AS_OLD);
         }
 
         // ========== 第4步：BCrypt 加密新密码 ==========
@@ -227,7 +228,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!requestVo.getPassword().equals(requestVo.getConfirmPassword())) {
             log.warn("注册失败：两次密码不一致 - username={}", requestVo.getUsername());
             // 400 Bad Request —— 前端提交的数据有误
-            throw new BusinessException(400, "两次输入的密码不一致");
+            throw new BusinessException(ErrorCode.PASSWORD_NOT_MATCH);
         }
 
         // ========== 第2步：校验用户名是否包含敏感词admin（不区分大小写） ==========
@@ -235,7 +236,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 这样不管用户输入的是 Admin、ADMIN、aDmIn……只要含有这5个字母就算违规
         if (requestVo.getUsername().toLowerCase().contains("admin")) {
             log.warn("注册失败：用户名包含敏感词 - username={}", requestVo.getUsername());
-            throw new BusinessException(400, "用户名不合法");
+            throw new BusinessException(ErrorCode.USERNAME_INVALID);
         }
 
         // ========== 第3步：校验用户名是否重复 ==========
@@ -248,7 +249,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (count > 0) {
             log.warn("注册失败：用户名已存在 - username={}", requestVo.getUsername());
             // 409 Conflict —— 资源冲突，用户名已被占用
-            throw new BusinessException(409, "用户名已被注册，请更换");
+            throw new BusinessException(ErrorCode.USERNAME_DUPLICATE);
         }
 
         // ========== 第4步：BCrypt 加密密码 ==========
@@ -271,7 +272,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (!saved) {
             // 理论上不会走到这里，但防御性编程总不会错
             log.error("注册失败：数据库保存失败 - username={}", requestVo.getUsername());
-            throw new BusinessException(500, "注册失败，请稍后重试");
+            throw new BusinessException(ErrorCode.REGISTER_FAILED);
         }
 
         // ========== 第7步：生成 JWT Token，注册成功即自动登录 ==========

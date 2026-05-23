@@ -1,5 +1,7 @@
 package com.atguigu.exam.service.impl;
 
+import com.atguigu.exam.common.BusinessException;
+import com.atguigu.exam.common.ErrorCode;
 import com.atguigu.exam.entity.Category;
 import com.atguigu.exam.entity.Question;
 import com.atguigu.exam.mapper.CategoryMapper;
@@ -257,12 +259,8 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         if (count > 0) {
             // String.formatted()：Java 15+ 的字符串格式化方法
             // 相当于 String.format()，但更简洁
-            throw new RuntimeException(
-                "%s 父分类下，已经存在名为：%s 的子分类信息！本次添加失败！".formatted(
-                    category.getParentId(), 
-                    category.getName()
-                )
-            );
+            throw new BusinessException(ErrorCode.CATEGORY_DUPLICATE,
+                    "父分类ID=" + category.getParentId() + " 下已存在子分类《" + category.getName() + "》");
         }
         
         // 【步骤 3】保存分类到数据库
@@ -327,12 +325,8 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
             Category parent = getById(category.getParentId());
             
             // 抛出异常，提示在哪个父分类下有重名
-            throw new RuntimeException(
-                "在%s父分类下，已经存在名为：%s 的子分类，本次更新失败！".formatted(
-                    parent.getName(),
-                    category.getName()
-                )
-            );
+            throw new BusinessException(ErrorCode.CATEGORY_DUPLICATE,
+                    "父分类《" + parent.getName() + "》下已存在子分类《" + category.getName() + "》");
         }
         
         // 【步骤 4】执行更新
@@ -394,7 +388,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         // 【步骤 2】检查是否是一级分类（parentId=0）
         if (category.getParentId() == 0) {
             // 抛出异常，阻止删除一级分类
-            throw new RuntimeException("不能删除一级标题！");
+            throw new BusinessException(ErrorCode.CATEGORY_IS_ROOT);
         }
         
         // 【步骤 3】检查是否有关联的题目
@@ -408,12 +402,8 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         
         // 【步骤 4】如果有题目关联，抛出异常
         if (count > 0) {
-            throw new RuntimeException(
-                "当前的:%s 分类，关联了%s道题目，无法删除！".formatted(
-                    category.getName(),
-                    count
-                )
-            );
+            throw new BusinessException(ErrorCode.CATEGORY_HAS_QUESTIONS,
+                    "分类《" + category.getName() + "》关联了 " + count + " 道题目，无法删除");
         }
         
         // 【步骤 5】以上检查都通过，执行删除

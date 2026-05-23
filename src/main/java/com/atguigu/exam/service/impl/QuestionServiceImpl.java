@@ -2,7 +2,9 @@ package com.atguigu.exam.service.impl;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.atguigu.exam.common.BusinessException;
 import com.atguigu.exam.common.CacheConstants;
+import com.atguigu.exam.common.ErrorCode;
 import com.atguigu.exam.entity.PaperQuestion;
 import com.atguigu.exam.entity.Question;
 import com.atguigu.exam.entity.QuestionAnswer;
@@ -66,7 +68,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     public Question queryQuestionById(Long id) {
         Question question = getById(id);
         if (question == null) {
-            throw new RuntimeException("查询 id 为%s的题目已经不存在！".formatted(id));
+            throw new BusinessException(ErrorCode.QUESTION_NOT_FOUND,
+                    "id=" + id + " 的题目不存在");
         }
 
         QuestionAnswer questionAnswer = questionAnswerMapper.selectOne(new LambdaQueryWrapper<QuestionAnswer>().eq(QuestionAnswer::getQuestionId, id));
@@ -151,7 +154,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
         // 如果已存在，抛出异常阻止保存
         if (count > 0) {
-            throw new RuntimeException("在%s类型下，已经存在名为%s的题目信息，保存失败！".formatted(question.getType(), question.getTitle()));
+            throw new BusinessException(ErrorCode.QUESTION_TITLE_DUPLICATE,
+                    question.getType() + " 类型下已存在题目《" + question.getTitle() + "》");
         }
 
         // 【步骤 2】保存题目主体信息
@@ -279,7 +283,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         long count = count(queryWrapper);
         // 若存在同标题题目，抛出运行时异常终止更新流程
         if (count > 0) {
-            throw new RuntimeException("修改题目的新的title: %s 已经被其他题目使用了！更新失败！".formatted(question.getTitle()));
+            throw new BusinessException(ErrorCode.QUESTION_TITLE_DUPLICATE,
+                    "题目标题《" + question.getTitle() + "》已被其他题目使用");
         }
         // 2. 更新题目基础信息
         // 调用MyBatis-Plus提供的方法，根据题目ID更新题目表中的字段
@@ -346,7 +351,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         Long count = paperQuestionMapper.selectCount(queryWrapper);
         // 如果引用次数大于0，说明该题目正在被使用，抛出异常终止删除操作
         if (count > 0) {
-            throw new RuntimeException("id为%s的题目，被试卷正在引用，引用次数为：%s，所以删除失败！".formatted(id, count));
+            throw new BusinessException(ErrorCode.QUESTION_REFERENCED,
+                    "id=" + id + " 的题目被 " + count + " 个试卷引用，无法删除");
         }
 
         // 2. 执行题目本身的删除操作（基于MyBatis-Plus的通用方法，根据主键ID删除）
@@ -374,14 +380,14 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         // ====================== 1. 文件校验阶段 ======================
         // 校验 1：判断文件是否为空（无实际内容）
         if (file.isEmpty()) {
-            throw new RuntimeException("生成预览数据的表格文件为空！");
+            throw new BusinessException(ErrorCode.EXCEL_FILE_EMPTY);
         }
 
         // 获取上传文件的原始文件名（包含后缀）
         String filename = file.getOriginalFilename();
         // 校验 2：判断文件名是否为 null 以及文件格式是否为 .xls 或 .xlsx
         if (filename == null || (!filename.endsWith(".xls") && !filename.endsWith(".xlsx"))) {
-            throw new RuntimeException("上传的文件格式错误，必须是 xls 或者 xlsx 格式！");
+            throw new BusinessException(ErrorCode.EXCEL_FORMAT_ERROR);
         }
 
         // ====================== 2. Excel 解析阶段 ======================
@@ -486,7 +492,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             response = kimiAiService.callKimiAI(prompt);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("AI 生成题目过程中被中断", e);
+            throw new BusinessException(ErrorCode.AI_GENERATE_FAILED, "AI生成题目过程中被中断");
         }
 
         // --------------------------
@@ -569,7 +575,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
             // 3.8 校验最终生成的题目数量是否为空
             if (ObjectUtils.isEmpty(questionImportVoList)) {
-                throw new RuntimeException("返回结果结构正确，但是返回数据为空！再次尝试！");
+                throw new BusinessException(ErrorCode.AI_RESPONSE_EMPTY);
             }
 
             // 3.9 所有题目解析完成，返回结果列表
@@ -579,7 +585,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             // 4. 结果格式错误处理
             // --------------------------
             // 如果Kimi返回的结果不符合 ```json ... ``` 格式，抛出异常
-            throw new RuntimeException("ai生成题目的结果结构错误，无法进行解析！具体数据为：{}".formatted(response));
+            throw new BusinessException(ErrorCode.AI_RESPONSE_FORMAT_ERROR);
         }
     }
 }
