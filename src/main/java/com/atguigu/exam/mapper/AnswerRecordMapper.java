@@ -2,6 +2,7 @@ package com.atguigu.exam.mapper;
 
 import com.atguigu.exam.entity.AnswerRecord;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Mapper;
 
 /**
 * @author 86158
@@ -9,6 +10,7 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 * @createDate 2025-06-20 22:37:43
 * @Entity com.exam.entity.AnswerRecord
 */
+@Mapper
 public interface AnswerRecordMapper extends BaseMapper<AnswerRecord> {
 
 } 

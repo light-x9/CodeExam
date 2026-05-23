@@ -22,8 +22,8 @@
         qas.keywords,
         qas.create_time qas_create_time,
         qas.update_time qas_update_time
-        from questions qs left join question_answers qas on qs.id = qas.question_id
-        where qs.is_deleted = 0 and qas.is_deleted = 0
+        from questions qs left join question_answers qas on qs.id = qas.question_id and qas.is_deleted = 0
+        where qs.is_deleted = 0
         <if test="questionQueryVo.type != null and questionQueryVo.type != ''">
             and qs.type = #{questionQueryVo.type}
         </if>
