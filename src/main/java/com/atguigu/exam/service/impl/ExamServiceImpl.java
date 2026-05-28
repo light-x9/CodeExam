@@ -85,7 +85,9 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
         for (SubmitAnswerVo answer : answers) {
             answerRecords.add(new AnswerRecord(examRecordId, answer.getQuestionId(), answer.getUserAnswer()));
         }
-        answerRecordMapper.insert(answerRecords);
+        for (AnswerRecord answerRecord : answerRecords) {
+            answerRecordMapper.insert(answerRecord);
+        }
         // 3. 标记考试已完成
         record.setStatus("已完成");
         record.setEndTime(LocalDateTime.now());

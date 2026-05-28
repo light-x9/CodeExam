@@ -72,6 +72,12 @@ public enum ErrorCode {
     AI_GENERATE_FAILED(500, "AI生成题目失败"),
     AI_RESPONSE_EMPTY(500, "AI返回结果为空"),
     AI_RESPONSE_FORMAT_ERROR(500, "AI返回结果格式异常"),
+
+    // ==================== 文件上传相关 ====================
+    FILE_EMPTY(400, "上传文件不能为空"),
+    FILE_EXTENSION_NOT_ALLOWED(400, "不支持的文件类型"),
+    FILE_SIZE_EXCEEDED(400, "文件大小超出限制"),
+    FILE_UPLOAD_FAILED(500, "文件上传失败，请稍后重试"),
     ;
 
     /** HTTP 业务状态码 */

@@ -173,7 +173,7 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
         // 3. 更新试卷基础信息（保留原状态）
         Paper paper = new Paper();
         BeanUtils.copyProperties(paperVo, paper);
-        paper.setId(id);
+        paper.setId(id.longValue());
         paper.setStatus(existingPaper.getStatus());
         // 4. 删除旧的试卷-题目关联
         paperQuestionService.remove(

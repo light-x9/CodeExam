@@ -21,6 +21,10 @@ spring:
       host: 192.168.100.128
       password: 209746
       port: 6379
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
 #用于打印框架生成的sql语句，便于调试
 mybatis-plus:
   configuration:
@@ -66,3 +70,10 @@ logging:
     com.atguigu.exam: debug  # 你的业务代码
     org.springframework.data.redis: debug # Redis 操作相关
     io.lettuce.core: debug # Redis 连接驱动相关
+
+# ==================== MinIO 对象存储配置 ====================
+minio:
+  endpoint: http://192.168.100.128:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket: exam-system

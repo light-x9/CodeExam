@@ -11,6 +11,8 @@ import com.atguigu.exam.entity.Banner;
 import com.atguigu.exam.entity.BaseEntity;
 // 轮播图服务接口 - 业务逻辑层
 import com.atguigu.exam.service.BannerService;
+// 文件上传服务接口 - 上传图片到 MinIO
+import com.atguigu.exam.service.FileUploadService;
 // MyBatis-Plus 的条件构造器 - 用于构建查询条件
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 // MyBatis-Plus 的更新条件构造器 - 用于构建更新条件
@@ -73,6 +75,9 @@ public class BannerController {
     @Autowired  // Spring 的依赖注入注解：自动装配 BannerService 的实现类
     private BannerService bannerService;  // 服务层对象，封装了所有数据库操作和业务逻辑
 
+    @Autowired
+    private FileUploadService fileUploadService;  // 文件上传服务，上传图片到 MinIO
+
 
     // ============================================================================
     // 【接口 1：图片上传】
@@ -110,16 +115,13 @@ public class BannerController {
     @PostMapping("/upload-image")  // 映射 POST 请求到 /api/banners/upload-image
     @Operation(summary = "上传轮播图图片", description = "将图片文件上传到 MinIO 服务器，返回可访问的图片 URL")
     public Result<String> uploadBannerImage(
-            @Parameter(description = "要上传的图片文件，支持 jpg、png、gif 等格式，大小限制 5MB") 
-            @RequestParam("file") MultipartFile file) {  // @RequestParam 表示从请求参数中获取 file 文件
-        
-        // TODO: 实现图片上传逻辑
-        // 1. 验证文件是否为空
-        // 2. 验证文件格式和大小
-        // 3. 调用 FileUploadService 上传图片
-        // 4. 返回图片 URL
-        
-        return Result.success("图片上传成功");  // 暂时返回成功消息，后续需要补充完整逻辑
+            @Parameter(description = "要上传的图片文件，支持 jpg、png、gif 等格式，大小限制 5MB")
+            @RequestParam("file") MultipartFile file) {
+
+        Map<String, Object> uploadResult = fileUploadService.uploadFile(file, "banners/");
+        String imageUrl = uploadResult.get("url").toString();
+        log.info("轮播图图片上传成功: {}", imageUrl);
+        return Result.success(imageUrl, "图片上传成功");
     }
     
     // ============================================================================
@@ -323,20 +325,20 @@ public class BannerController {
     @PostMapping("/add")  // 映射 POST 请求到 /api/banners/add
     @Operation(summary = "添加轮播图", description = "创建新的轮播图，需要提供图片 URL、标题、跳转链接等信息")
     public Result<String> addBanner(@RequestBody Banner banner) {
-        // TODO: 待实现
-        // 1. 参数验证
-        // if (banner.getTitle() == null || banner.getImageUrl() == null) {
-        //     return Result.error("标题和图片不能为空");
-        // }
-        
-        // 2. 设置默认值
-        // banner.setIsActive(true);  // 默认启用
-        // banner.setCreateTime(LocalDateTime.now());
-        
-        // 3. 保存到数据库
-        // bannerService.save(banner);
-        
-        // 4. 返回结果
+        if (banner.getTitle() == null || banner.getTitle().trim().isEmpty()) {
+            return Result.error("标题不能为空");
+        }
+        if (banner.getImageUrl() == null || banner.getImageUrl().trim().isEmpty()) {
+            return Result.error("图片URL不能为空");
+        }
+        if (banner.getIsActive() == null) {
+            banner.setIsActive(true);
+        }
+        if (banner.getSortOrder() == null) {
+            banner.setSortOrder(0);
+        }
+        bannerService.save(banner);
+        log.info("轮播图添加成功: id={}, title={}", banner.getId(), banner.getTitle());
         return Result.success("轮播图添加成功");
     }
     
@@ -380,22 +382,15 @@ public class BannerController {
     @PutMapping("/update")  // 映射 PUT 请求到 /api/banners/update
     @Operation(summary = "更新轮播图", description = "更新轮播图的信息，包括图片、标题、跳转链接、排序等")
     public Result<String> updateBanner(@RequestBody Banner banner) {
-        // TODO: 待实现
-        // 1. 验证参数
-        // if (banner.getId() == null) {
-        //     return Result.error("缺少必需的 id 参数");
-        // }
-        
-        // 2. 检查记录是否存在
-        // Banner existBanner = bannerService.getById(banner.getId());
-        // if (existBanner == null) {
-        //     return Result.error("轮播图不存在");
-        // }
-        
-        // 3. 执行更新
-        // bannerService.updateById(banner);
-        
-        // 4. 返回结果
+        if (banner.getId() == null) {
+            return Result.error("缺少必需的 id 参数");
+        }
+        Banner existBanner = bannerService.getById(banner.getId());
+        if (existBanner == null) {
+            return Result.error("轮播图不存在");
+        }
+        bannerService.updateById(banner);
+        log.info("轮播图更新成功: id={}, title={}", banner.getId(), banner.getTitle());
         return Result.success("轮播图更新成功");
     }
     
