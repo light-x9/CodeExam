@@ -3,7 +3,6 @@ package com.atguigu.exam.service.impl;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.atguigu.exam.common.BusinessException;
-import com.atguigu.exam.common.CacheConstants;
 import com.atguigu.exam.common.ErrorCode;
 import com.atguigu.exam.entity.PaperQuestion;
 import com.atguigu.exam.entity.Question;
@@ -14,6 +13,7 @@ import com.atguigu.exam.mapper.QuestionAnswerMapper;
 import com.atguigu.exam.mapper.QuestionChoiceMapper;
 import com.atguigu.exam.mapper.QuestionMapper;
 import com.atguigu.exam.service.KimiAiService;
+import com.atguigu.exam.service.QuestionScoreAsyncService;
 import com.atguigu.exam.service.QuestionService;
 import com.atguigu.exam.utils.ExcelUtil;
 import com.atguigu.exam.utils.RedisUtils;
@@ -56,6 +56,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     // 注入 Redis 工具类，用于操作 Redis 缓存
     @Autowired
     private RedisUtils redisUtils;
+    // 注入异步任务服务，用线程池替代 new Thread()
+    @Autowired
+    private QuestionScoreAsyncService questionScoreAsyncService;
 
     @Override
     //分页查询题目列表
@@ -79,22 +82,11 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             List<QuestionChoice> questionChoices = questionChoiceMapper.selectList(new LambdaQueryWrapper<QuestionChoice>().eq(QuestionChoice::getQuestionId, id));
             question.setChoices(questionChoices);
         }
-//5. 预留：进行redis的数据缓存zset
-        new Thread(() -> {
-            incrementQuestionScore(question.getId());
-        }).start();
+        //5. 异步更新Redis热榜分数（使用线程池，不再 new Thread）
+        questionScoreAsyncService.incrementQuestionScore(question.getId());
         return question;
     }
 
-
-    /**
-     * 方法进行题目加分，在排行榜中 被异步调用
-     * @param questionId
-     */
-    private void incrementQuestionScore(Long questionId){
-        Double score = redisUtils.zIncrementScore(CacheConstants.POPULAR_QUESTIONS_KEY, questionId, 1);
-        log.debug("完成 id:{}题目的热榜分数累计，累计后的分数为：{}",questionId,score);
-    }
 
     /**
      * 保存题目
