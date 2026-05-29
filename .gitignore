@@ -36,3 +36,6 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### 本地配置文件（含敏感信息，不提交） ###
+application-local.yml

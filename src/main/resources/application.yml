@@ -1,6 +1,8 @@
 server:
   port: 8080
 spring:
+  profiles:
+    active: local   # 默认激活本地配置，自动加载 application-local.yml
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
   datasource:
@@ -47,7 +49,9 @@ mybatis-plus:
 kimi:
   api:
     base-url: https://api.moonshot.cn/v1/chat/completions
-    api-key: sk-p6OuHxjnFy3uXCAWAGs9TUeuer8OfuknMl39ePyQ9G3o3SHo
+    # 生产环境通过环境变量注入: export KIMI_API_KEY=sk-xxx
+    # 开发环境可在 application-local.yml 中覆盖（该文件已加入 .gitignore）
+    api-key: ${KIMI_API_KEY:}
     model: moonshot-v1-32k
     temperature: 0.3
     max-tokens: 4096

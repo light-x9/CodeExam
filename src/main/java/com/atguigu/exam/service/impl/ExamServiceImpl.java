@@ -7,7 +7,9 @@ import com.atguigu.exam.mapper.AnswerRecordMapper;
 import com.atguigu.exam.mapper.ExamRecordMapper;
 import com.atguigu.exam.mapper.QuestionAnswerMapper;
 import com.atguigu.exam.service.ExamService;
+import com.atguigu.exam.service.KimiGradingService;
 import com.atguigu.exam.service.PaperService;
+import com.atguigu.exam.vo.GradingResult;
 import com.atguigu.exam.vo.StartExamVo;
 import com.atguigu.exam.vo.SubmitAnswerVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -39,6 +41,8 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
     private AnswerRecordMapper answerRecordMapper;
     @Autowired
     private QuestionAnswerMapper questionAnswerMapper;
+    @Autowired
+    private KimiGradingService kimiGradingService;
 
     /**
      * 开始考试：校验试卷已发布 → 创建考试记录 → 返回试卷题目
@@ -96,7 +100,8 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
     }
 
     /**
-     * 自动批阅：客观题自动判对错 + 计算总分，简答题标记为待人工评阅
+     * 自动批阅：客观题（选择/判断）字符串对比判分 + 简答题调用 AI 判卷，计算总分
+     * AI 判卷失败时简答题降级为待人工评阅（isCorrect=2, score=0）
      */
     @Override
     @Transactional
@@ -155,9 +160,49 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
                     ar.setScore(0);
                 }
             } else {
-                // 简答题：标记为待人工评阅
-                ar.setIsCorrect(2);
-                ar.setScore(0);
+                // 简答题：调用 AI 判卷
+                // isCorrect 约定：2=待人工评阅(AI失败降级), 3=AI已评阅
+                QuestionAnswer textAnswer = question.getAnswer();
+                String standardAnswer = textAnswer != null ? textAnswer.getAnswer() : null;
+                String scoreKeywords = textAnswer != null ? textAnswer.getKeywords() : null;
+                Integer maxScore = question.getPaperScore() != null
+                        ? question.getPaperScore().intValue() : question.getScore();
+
+                try {
+                    GradingResult gradingResult = kimiGradingService.gradeTextQuestion(
+                            question.getTitle(), standardAnswer, scoreKeywords,
+                            ar.getUserAnswer(), maxScore != null ? maxScore : 10);
+
+                    if (gradingResult != null && gradingResult.getScore() != null) {
+                        // AI 判卷成功
+                        ar.setIsCorrect(3); // 3 表示 AI 已评阅
+                        ar.setScore(gradingResult.getScore());
+                        // 拼接评语和得分要点为完整 AI 反馈
+                        StringBuilder aiFeedback = new StringBuilder();
+                        if (gradingResult.getComment() != null) {
+                            aiFeedback.append(gradingResult.getComment());
+                        }
+                        if (gradingResult.getKeyPoints() != null && !gradingResult.getKeyPoints().isEmpty()) {
+                            aiFeedback.append("\n\n【得分要点】");
+                            for (String kp : gradingResult.getKeyPoints()) {
+                                aiFeedback.append("\n- ").append(kp);
+                            }
+                        }
+                        ar.setAiCorrection(aiFeedback.toString());
+                        log.info("AI判卷完成 题目ID={}, 得分={}/{}", question.getId(),
+                                gradingResult.getScore(), maxScore);
+                    } else {
+                        // AI 判卷失败 → 降级为待人工评阅
+                        ar.setIsCorrect(2);
+                        ar.setScore(0);
+                        log.warn("AI判卷失败降级 题目ID={}, 标记为待人工评阅", question.getId());
+                    }
+                } catch (Exception e) {
+                    // AI 调用异常 → 降级为待人工评阅，不要因为一道题影响整场批阅
+                    log.error("AI判卷异常降级 题目ID={}, 错误: {}", question.getId(), e.getMessage());
+                    ar.setIsCorrect(2);
+                    ar.setScore(0);
+                }
             }
             totalScore += ar.getScore() != null ? ar.getScore() : 0;
             answerRecordMapper.updateById(ar);

@@ -35,10 +35,10 @@ public class AnswerRecord extends BaseEntity {
             example = "5")
     private Integer score; // 得分
 
-    @Schema(description = "答题正确性", 
-            example = "1", 
-            allowableValues = {"0", "1", "2"})
-    private Integer isCorrect; // 是否正确 (0: 错误, 1: 正确, 2: 部分正确)
+    @Schema(description = "答题正确性 / 评阅状态",
+            example = "1",
+            allowableValues = {"0", "1", "2", "3"})
+    private Integer isCorrect; // 0-错误, 1-正确, 2-待人工评阅(AI失败降级), 3-AI已评阅
 
     @Schema(description = "AI智能批改的评价意见", 
             example = "答案基本正确，但缺少关键概念的解释...")

@@ -58,7 +58,7 @@ public class ExamController {
      * @param examRecordId 考试记录ID
      */
     @PostMapping("/{examRecordId}/grade")
-    @Operation(summary = "自动批阅", description = "自动批阅客观题并计算总分，简答题留待人工审批")
+    @Operation(summary = "自动批阅", description = "客观题自动判分，简答题调用AI智能评分，AI失败时降级为待人工评阅")
     public Result<ExamRecord> gradeExam(
             @Parameter(description = "考试记录ID") @PathVariable Integer examRecordId) {
         ExamRecord record = examService.gradeExam(examRecordId);

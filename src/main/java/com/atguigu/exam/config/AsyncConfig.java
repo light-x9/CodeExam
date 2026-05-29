@@ -78,4 +78,38 @@ public class AsyncConfig {
                 corePoolSize, corePoolSize * 2, 200);
         return executor;
     }
+
+    /**
+     * AI 判卷专用线程池
+     *
+     * 为什么单独建一个线程池？
+     * - AI 判卷是网络 I/O 密集型（调用 Kimi API，单次耗时 3~10 秒）
+     * - 与热榜分数更新的轻量 Redis 操作隔离，避免互相影响
+     * - 核心线程数较少即可，因为瓶颈在外部 API 响应速度
+     */
+    @Bean(name = "gradingExecutor")
+    public ThreadPoolTaskExecutor gradingExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+
+        // AI 判卷是纯网络等待，核心线程数不需要多，2 个即可
+        executor.setCorePoolSize(2);
+        // 突发时可扩展到 4 个
+        executor.setMaxPoolSize(4);
+        // 队列容量 50 —— AI 调用耗时长，排队多了也没意义，不如快速失败
+        executor.setQueueCapacity(50);
+        // 空闲线程 120 秒后回收
+        executor.setKeepAliveSeconds(120);
+        // 线程名前缀方便在日志中识别判卷任务
+        executor.setThreadNamePrefix("ai-grading-");
+        // 拒绝策略：队列满 + 线程满 → 交还给调用线程同步执行（背压）
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        // 优雅停机：等待队列中任务完成
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60);
+
+        executor.initialize();
+
+        log.info("AI判卷线程池初始化完成: corePoolSize=2, maxPoolSize=4, queueCapacity=50");
+        return executor;
+    }
 }
