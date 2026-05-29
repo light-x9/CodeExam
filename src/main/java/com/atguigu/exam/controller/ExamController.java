@@ -58,10 +58,13 @@ public class ExamController {
      * @param examRecordId 考试记录ID
      */
     @PostMapping("/{examRecordId}/grade")
-    @Operation(summary = "自动批阅", description = "客观题自动判分，简答题调用AI智能评分，AI失败时降级为待人工评阅")
+    @Operation(summary = "自动批阅", description = "客观题即时判分并返回结果，简答题后台异步AI评分，状态为'批阅中'时可轮询刷新获取最终结果")
     public Result<ExamRecord> gradeExam(
             @Parameter(description = "考试记录ID") @PathVariable Integer examRecordId) {
         ExamRecord record = examService.gradeExam(examRecordId);
+        if ("批阅中".equals(record.getStatus())) {
+            return Result.success(record, "客观题已批阅完成，主观题已提交AI异步批阅，请稍后刷新查看最终成绩");
+        }
         return Result.success(record, "试卷批阅完成");
     }
 

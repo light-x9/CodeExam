@@ -57,7 +57,7 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(RuntimeException.class)
     public Result<Void> handleRuntimeException(RuntimeException e) {
-        log.error("未预期的运行时异常", e);
+        log.error("未预期的运行时异常 - 类型={}, 消息={}", e.getClass().getName(), e.getMessage(), e);
         return Result.error(ErrorCode.INTERNAL_ERROR.getCode(),
                             ErrorCode.INTERNAL_ERROR.getMessage());
     }
@@ -67,8 +67,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public Result<Void> handleException(Exception e) {
-        log.error("系统异常", e);
+        log.error("系统异常 - 类型={}, 消息={}", e.getClass().getName(), e.getMessage(), e);
         return Result.error(ErrorCode.INTERNAL_ERROR.getCode(),
-                            ErrorCode.INTERNAL_ERROR.getMessage());
+                            "系统内部异常: " + e.getClass().getSimpleName() + " - " + e.getMessage());
     }
 }

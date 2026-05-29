@@ -172,6 +172,12 @@
             <artifactId>redisson</artifactId>
             <version>3.24.3</version>
         </dependency>
+        <!-- JSON Schema 校验 —— 对 AI 返回结果做结构化校验，降低解析失败率 -->
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>1.4.0</version>
+        </dependency>
         <!-- 测试依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -6,16 +6,13 @@ import com.atguigu.exam.entity.*;
 import com.atguigu.exam.mapper.AnswerRecordMapper;
 import com.atguigu.exam.mapper.ExamRecordMapper;
 import com.atguigu.exam.mapper.QuestionAnswerMapper;
+import com.atguigu.exam.service.AsyncGradingService;
 import com.atguigu.exam.service.ExamService;
-import com.atguigu.exam.service.KimiGradingService;
 import com.atguigu.exam.service.PaperService;
-import com.atguigu.exam.vo.GradingResult;
 import com.atguigu.exam.vo.StartExamVo;
 import com.atguigu.exam.vo.SubmitAnswerVo;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -42,7 +39,7 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
     @Autowired
     private QuestionAnswerMapper questionAnswerMapper;
     @Autowired
-    private KimiGradingService kimiGradingService;
+    private AsyncGradingService asyncGradingService;
 
     /**
      * 开始考试：校验试卷已发布 → 创建考试记录 → 返回试卷题目
@@ -100,11 +97,18 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
     }
 
     /**
-     * 自动批阅：客观题（选择/判断）字符串对比判分 + 简答题调用 AI 判卷，计算总分
-     * AI 判卷失败时简答题降级为待人工评阅（isCorrect=2, score=0）
+     * 自动批阅：客观题（选择/判断）同步即时判分 + 简答题提交异步 AI 批阅
+     *
+     * 设计思路：
+     * 1. 客观题本地字符串比对，毫秒级完成，结果即时写入数据库
+     * 2. 主观题标记为"待批阅"（isCorrect=2），提交到 gradingExecutor 线程池异步处理
+     * 3. HTTP 请求不再等待 AI 调用，客观题结果立即可见
+     * 4. 异步任务完成后自动更新考试状态为"已批阅"并汇总总分
+     *
+     * @param examRecordId 考试记录ID
+     * @return 批阅中的考试记录（客观题已判分，主观题待异步批阅）
      */
     @Override
-    @Transactional
     public ExamRecord gradeExam(Integer examRecordId) {
         // 1. 校验考试记录存在
         ExamRecord record = getById(examRecordId);
@@ -122,8 +126,11 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
         // 4. 构建题目ID → Question 的映射
         Map<Long, Question> questionMap = paper.getQuestions().stream()
                 .collect(Collectors.toMap(Question::getId, q -> q));
+
+        int objectiveScore = 0;   // 客观题得分累计
+        boolean hasSubjective = false; // 是否存在主观题需要异步批改
+
         // 5. 逐题判分
-        int totalScore = 0;
         for (AnswerRecord ar : answerRecords) {
             Question question = questionMap.get(ar.getQuestionId().longValue());
             if (question == null) {
@@ -133,14 +140,12 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
             }
             String type = question.getType();
             if ("CHOICE".equals(type) || "JUDGE".equals(type)) {
-                // 客观题：对比标准答案
+                // ── 客观题：本地即时判分 ──
                 QuestionAnswer correctAnswer = question.getAnswer();
                 String userAnswer = ar.getUserAnswer();
                 String correctAnswerStr = correctAnswer != null ? correctAnswer.getAnswer() : null;
 
-                // 判断题：统一答案格式（数据库存 TRUE/FALSE，学生提交 T/F）
                 if ("JUDGE".equals(type)) {
-                    // 调试日志：打印归一化前后的值，便于排查格式问题
                     log.info("判卷调试 - 题目ID={}, 原始标准答案={}, 原始学生答案={}",
                             question.getId(), correctAnswerStr, userAnswer);
                     userAnswer = normalizeJudgeAnswer(userAnswer);
@@ -151,69 +156,41 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
 
                 if (correctAnswerStr != null && correctAnswerStr.equalsIgnoreCase(userAnswer)) {
                     ar.setIsCorrect(1);
-                    // 优先使用试卷配置分，无配置时回退到题目默认分
                     Integer score = question.getPaperScore() != null
                             ? question.getPaperScore().intValue() : question.getScore();
                     ar.setScore(score);
+                    objectiveScore += score != null ? score : 0;
                 } else {
                     ar.setIsCorrect(0);
                     ar.setScore(0);
                 }
             } else {
-                // 简答题：调用 AI 判卷
-                // isCorrect 约定：2=待人工评阅(AI失败降级), 3=AI已评阅
-                QuestionAnswer textAnswer = question.getAnswer();
-                String standardAnswer = textAnswer != null ? textAnswer.getAnswer() : null;
-                String scoreKeywords = textAnswer != null ? textAnswer.getKeywords() : null;
-                Integer maxScore = question.getPaperScore() != null
-                        ? question.getPaperScore().intValue() : question.getScore();
-
-                try {
-                    GradingResult gradingResult = kimiGradingService.gradeTextQuestion(
-                            question.getTitle(), standardAnswer, scoreKeywords,
-                            ar.getUserAnswer(), maxScore != null ? maxScore : 10);
-
-                    if (gradingResult != null && gradingResult.getScore() != null) {
-                        // AI 判卷成功
-                        ar.setIsCorrect(3); // 3 表示 AI 已评阅
-                        ar.setScore(gradingResult.getScore());
-                        // 拼接评语和得分要点为完整 AI 反馈
-                        StringBuilder aiFeedback = new StringBuilder();
-                        if (gradingResult.getComment() != null) {
-                            aiFeedback.append(gradingResult.getComment());
-                        }
-                        if (gradingResult.getKeyPoints() != null && !gradingResult.getKeyPoints().isEmpty()) {
-                            aiFeedback.append("\n\n【得分要点】");
-                            for (String kp : gradingResult.getKeyPoints()) {
-                                aiFeedback.append("\n- ").append(kp);
-                            }
-                        }
-                        ar.setAiCorrection(aiFeedback.toString());
-                        log.info("AI判卷完成 题目ID={}, 得分={}/{}", question.getId(),
-                                gradingResult.getScore(), maxScore);
-                    } else {
-                        // AI 判卷失败 → 降级为待人工评阅
-                        ar.setIsCorrect(2);
-                        ar.setScore(0);
-                        log.warn("AI判卷失败降级 题目ID={}, 标记为待人工评阅", question.getId());
-                    }
-                } catch (Exception e) {
-                    // AI 调用异常 → 降级为待人工评阅，不要因为一道题影响整场批阅
-                    log.error("AI判卷异常降级 题目ID={}, 错误: {}", question.getId(), e.getMessage());
-                    ar.setIsCorrect(2);
-                    ar.setScore(0);
-                }
+                // ── 主观题：标记待批阅，提交异步 AI 评分 ──
+                // isCorrect=2 表示待人工/AI评阅
+                ar.setIsCorrect(2);
+                ar.setScore(0);
+                hasSubjective = true;
             }
-            totalScore += ar.getScore() != null ? ar.getScore() : 0;
+            // 逐题更新，即时落库（无 @Transactional，MyBatis-Plus 自动提交）
             answerRecordMapper.updateById(ar);
         }
+
         // 6. 更新考试记录
-        record.setScore(totalScore);
-        record.setStatus("已批阅");
-        updateById(record);
-        // 7. 回填答题记录列表
+        record.setScore(objectiveScore);
+        if (hasSubjective) {
+            record.setStatus("批阅中");
+            updateById(record);
+            // 提交异步批阅任务 —— HTTP 请求线程立即返回，不等待 AI 调用
+            asyncGradingService.gradeSubjectiveQuestions(examRecordId, record.getExamId());
+            log.info("考试记录 {} 客观题批阅完成（{}分），主观题已提交异步批阅", examRecordId, objectiveScore);
+        } else {
+            record.setStatus("已批阅");
+            updateById(record);
+            log.info("考试记录 {} 批阅完成（纯客观题），总分：{}", examRecordId, objectiveScore);
+        }
+
+        // 7. 回填答题记录列表后返回
         record.setAnswerRecords(answerRecords);
-        log.info("考试记录 {} 批阅完成，总分：{}", examRecordId, totalScore);
         return record;
     }
 

@@ -16,6 +16,7 @@ import com.atguigu.exam.service.KimiAiService;
 import com.atguigu.exam.service.QuestionScoreAsyncService;
 import com.atguigu.exam.service.QuestionService;
 import com.atguigu.exam.utils.ExcelUtil;
+import com.atguigu.exam.utils.JsonSchemaValidator;
 import com.atguigu.exam.utils.RedisUtils;
 import com.atguigu.exam.vo.AiGenerateRequestVo;
 import com.atguigu.exam.vo.QuestionImportVo;
@@ -466,121 +467,251 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     /**
      * AI批量生成题目（预览接口，数据不入库）
      *
+     * 容错解析机制：
+     * 1. 多层回退提取 JSON（markdown代码块 → 纯花括号）
+     * 2. 截断 JSON 恢复（AI 达到 max_tokens 时输出被截断的场景）
+     * 3. JSON Schema 校验（字段类型/必填/枚举值约束）
+     * 4. 单题分值边界校验
+     *
      * @param request AI生成请求参数（包含主题、数量、难度、题型等配置）
      * @return 生成的题目列表（可直接用于后续导入入库）
-     * @throws InterruptedException 线程睡眠时被中断抛出的异常（来自重试机制）
      */
     @Override
     public List<QuestionImportVo> aiGenerateQuestions(AiGenerateRequestVo request) {
 
-        // --------------------------
         // 1. 构建 AI 提示词（Prompt）
-        // --------------------------
         String prompt = kimiAiService.buildPrompt(request);
         log.debug("ai 出题的条件为：{}，生成对应的提示词为：{}", request, prompt);
 
-        // --------------------------
-        // 2. 调用 Kimi AI 模型获取结果
-        // --------------------------
+        // 2. 调用 Kimi AI 模型获取结果（内部已含 3 次重试）
         String response;
         try {
+            log.info("开始调用 Kimi API，主题={}, 数量={}", request.getTopic(), request.getCount());
             response = kimiAiService.callKimiAI(prompt);
+            log.info("Kimi API 调用成功，返回内容长度={}", response != null ? response.length() : 0);
+        } catch (BusinessException e) {
+            // BusinessException 直接向上抛
+            throw e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new BusinessException(ErrorCode.AI_GENERATE_FAILED, "AI生成题目过程中被中断");
+        } catch (Exception e) {
+            // 兜底：捕获所有未预期的异常，记录完整类型和堆栈
+            log.error("调用 Kimi API 时发生未预期的异常，类型={}, 消息={}", e.getClass().getName(), e.getMessage(), e);
+            throw new BusinessException(ErrorCode.AI_GENERATE_FAILED,
+                    "AI调用异常: " + e.getClass().getSimpleName() + " - " + e.getMessage());
         }
 
-        // --------------------------
-        // 3. 解析 Kimi 返回的 JSON 结果
-        // --------------------------
-        int startIndex = response.indexOf("``json");
-        int endIndex = response.lastIndexOf("```");
-
-        // 3.2 校验结果格式是否正确
-        if (startIndex != -1 && endIndex != -1 && startIndex < endIndex) {
-            // 提取纯JSON字符串：startIndex+7 是为了跳过 ```json 前缀
-            String resultJson = response.substring(startIndex + 7, endIndex);
-
-            // 3.3 将JSON字符串转为JSONObject（使用FastJSON解析）
-            JSONObject jsonObject = JSONObject.parseObject(resultJson);
-
-            // 3.4 从JSON中提取questions数组（Kimi API返回格式固定）
-            JSONArray questions = jsonObject.getJSONArray("questions");
-
-            // 3.5 遍历questions数组，逐个解析为QuestionImportVo对象
-            List<QuestionImportVo> questionImportVoList = new ArrayList<>();
-            for (int i = 0; i < questions.size(); i++) {
-                // 获取单条题目对应的JSONObject
-                JSONObject itemObject = questions.getJSONObject(i);
-                // 新建QuestionImportVo对象，用于封装解析后的题目数据
-                QuestionImportVo questionImportVo = new QuestionImportVo();
-
-                // --------------------------
-                // 3.6 解析题目基础字段
-                // --------------------------
-                // 题目内容
-                questionImportVo.setTitle(itemObject.getString("title"));
-                // 题目类型：CHOICE（选择题）、JUDGE（判断题）、TEXT（简答题）
-                questionImportVo.setType(itemObject.getString("type"));
-                // 是否多选：true/false
-                questionImportVo.setMulti(itemObject.getBoolean("multi"));
-                // 分类ID（从请求参数中获取，用于后续导入）
-                questionImportVo.setCategoryId(request.getCategoryId());
-                // 难度：EASY/MEDIUM/HARD
-                questionImportVo.setDifficulty(itemObject.getString("difficulty"));
-                // 题目分值
-                questionImportVo.setScore(itemObject.getInteger("score"));
-                // 题目解析
-                questionImportVo.setAnalysis(itemObject.getString("analysis"));
-                // 题目答案（不同题型格式不同）
-                questionImportVo.setAnswer(itemObject.getString("answer"));
-
-                // --------------------------
-                // 3.7 特殊处理：选择题需要解析选项列表
-                // --------------------------
-                if ("CHOICE".equals(questionImportVo.getType())) {
-                    // 获取选项列表的JSONArray
-                    JSONArray choices = itemObject.getJSONArray("choices");
-                    // 新建选项DTO列表
-                    List<QuestionImportVo.ChoiceImportDto> choiceImportDtoList = new ArrayList<>();
-
-                    // 遍历选项数组，逐个解析为ChoiceImportDto
-                    for (int j = 0; j < choices.size(); j++) {
-                        JSONObject choiceObject = choices.getJSONObject(j);
-                        QuestionImportVo.ChoiceImportDto choiceImportDto = new QuestionImportVo.ChoiceImportDto();
-
-                        // 选项内容
-                        choiceImportDto.setContent(choiceObject.getString("content"));
-                        // 是否为正确答案
-                        choiceImportDto.setIsCorrect(choiceObject.getBoolean("isCorrect"));
-                        // 选项排序序号
-                        choiceImportDto.setSort(choiceObject.getInteger("sort"));
-
-                        // 将解析好的选项加入列表
-                        choiceImportDtoList.add(choiceImportDto);
-                    }
-
-                    // 将选项列表设置到题目VO中
-                    questionImportVo.setChoices(choiceImportDtoList);
-                }
-
-                // 将解析好的单条题目加入结果列表
-                questionImportVoList.add(questionImportVo);
-            }
-
-            // 3.8 校验最终生成的题目数量是否为空
-            if (ObjectUtils.isEmpty(questionImportVoList)) {
-                throw new BusinessException(ErrorCode.AI_RESPONSE_EMPTY);
-            }
-
-            // 3.9 所有题目解析完成，返回结果列表
-            return questionImportVoList;
-        } else {
-            // --------------------------
-            // 4. 结果格式错误处理
-            // --------------------------
-            // 如果Kimi返回的结果不符合 ```json ... ``` 格式，抛出异常
+        // 3. 多层回退提取 JSON 字符串
+        String resultJson = extractJsonFromAiResponse(response);
+        if (resultJson == null) {
+            log.error("AI 返回结果无法提取 JSON，原始响应前200字符: {}",
+                    response != null ? response.substring(0, Math.min(200, response.length())) : "null");
             throw new BusinessException(ErrorCode.AI_RESPONSE_FORMAT_ERROR);
         }
+
+        // 4. 解析 JSON 为题目列表
+        JSONObject jsonObject;
+        try {
+            jsonObject = JSONObject.parseObject(resultJson);
+        } catch (Exception e) {
+            log.error("AI 返回的 JSON 解析失败: {}，原始JSON前200字符: {}",
+                    e.getMessage(), resultJson.substring(0, Math.min(200, resultJson.length())));
+            throw new BusinessException(ErrorCode.AI_RESPONSE_FORMAT_ERROR);
+        }
+
+        // 4.1 JSON Schema 二次校验 —— 拦截字段类型/必填/枚举值错误
+        String schemaError = JsonSchemaValidator.validateAndDescribe(resultJson);
+        if (schemaError != null) {
+            log.warn("AI 返回 JSON 未通过 Schema 校验: {}，尝试继续解析（容错）", schemaError);
+            // 不中断流程，Schema 校验作为监控手段记录偏离情况
+        }
+
+        // 5. 提取并转换 questions 数组
+        JSONArray questions = jsonObject.getJSONArray("questions");
+        if (questions == null || questions.isEmpty()) {
+            throw new BusinessException(ErrorCode.AI_RESPONSE_EMPTY);
+        }
+
+        List<QuestionImportVo> questionImportVoList = new ArrayList<>();
+        for (int i = 0; i < questions.size(); i++) {
+            try {
+                QuestionImportVo vo = parseQuestionItem(questions.getJSONObject(i), request);
+                if (vo != null) {
+                    questionImportVoList.add(vo);
+                }
+            } catch (Exception e) {
+                // 单题解析失败不中断整体，记录日志继续处理剩余题目
+                log.error("解析第{}道AI生成题目失败: {}", i + 1, e.getMessage());
+            }
+        }
+
+        if (ObjectUtils.isEmpty(questionImportVoList)) {
+            throw new BusinessException(ErrorCode.AI_RESPONSE_EMPTY);
+        }
+
+        log.info("AI 出题完成: 生成 {} 道题目（原始题目数 {}）",
+                questionImportVoList.size(), questions.size());
+        return questionImportVoList;
+    }
+
+    /**
+     * 从 AI 返回的原始文本中提取 JSON 字符串
+     *
+     * 容错策略（三层回退）：
+     * 1. 提取 ```json ... ``` 代码块
+     * 2. 提取 ``` ... ``` 普通代码块
+     * 3. 提取第一个 { 到最后一个 } 之间的内容
+     * 4. 截断恢复：如果 AI 输出被 max_tokens 截断导致 JSON 不完整，
+     *    尝试补全缺失的括号后解析
+     */
+    private String extractJsonFromAiResponse(String content) {
+        if (content == null || content.trim().isEmpty()) {
+            return null;
+        }
+
+        // 第1层：```json ... ```
+        int jsonStart = content.indexOf("```json");
+        if (jsonStart != -1) {
+            int contentStart = content.indexOf('\n', jsonStart);
+            if (contentStart == -1) {
+                contentStart = jsonStart + "```json".length();
+            }
+            int jsonEnd = content.indexOf("```", contentStart);
+            if (jsonEnd != -1) {
+                return content.substring(contentStart, jsonEnd).trim();
+            }
+            // ```json 存在但缺少结束标记 → 可能是 max_tokens 截断
+            // 尝试提取从 contentStart 到字符串末尾的内容，并进行截断恢复
+            String truncated = content.substring(contentStart).trim();
+            log.warn("AI 返回可能被截断（缺少结束```标记），尝试恢复截断的 JSON");
+            return recoverTruncatedJson(truncated);
+        }
+
+        // 第2层：``` ... ``` 普通代码块
+        int codeStart = content.indexOf("```");
+        if (codeStart != -1) {
+            int contentStart = content.indexOf('\n', codeStart);
+            if (contentStart == -1) {
+                contentStart = codeStart + 3;
+            }
+            int codeEnd = content.indexOf("```", contentStart);
+            if (codeEnd != -1) {
+                return content.substring(contentStart, codeEnd).trim();
+            }
+            String truncated = content.substring(contentStart).trim();
+            log.warn("AI 返回可能被截断（普通代码块缺少结束标记），尝试恢复");
+            return recoverTruncatedJson(truncated);
+        }
+
+        // 第3层：直接提取花括号包裹的 JSON
+        int braceStart = content.indexOf('{');
+        int braceEnd = content.lastIndexOf('}');
+        if (braceStart != -1 && braceEnd != -1 && braceEnd > braceStart) {
+            return content.substring(braceStart, braceEnd + 1).trim();
+        }
+
+        return null;
+    }
+
+    /**
+     * 截断 JSON 恢复 —— AI 达到 max_tokens 限制时输出不完整的 JSON，
+     * 尝试补全缺失的括号/引号，尽量挽救已生成的题目数据
+     *
+     * 策略：从截断点向前查找，补全缺失的 ] } " 等闭合符号，
+     * 利用 FastJSON 的宽松解析能力做最终校验
+     */
+    private String recoverTruncatedJson(String truncated) {
+        if (truncated == null || truncated.trim().isEmpty()) {
+            return null;
+        }
+        // 统计未闭合的括号
+        int braceCount = 0;   // { }
+        int bracketCount = 0; // [ ]
+        boolean inString = false;
+        for (int i = 0; i < truncated.length(); i++) {
+            char c = truncated.charAt(i);
+            if (c == '"' && (i == 0 || truncated.charAt(i - 1) != '\\')) {
+                inString = !inString;
+            }
+            if (!inString) {
+                if (c == '{') braceCount++;
+                else if (c == '}') braceCount--;
+                else if (c == '[') bracketCount++;
+                else if (c == ']') bracketCount--;
+            }
+        }
+        // 如果正在字符串中间，先补一个引号
+        StringBuilder recovered = new StringBuilder(truncated);
+        if (inString) {
+            recovered.append('"');
+        }
+        // 逆序补全括号
+        for (int i = 0; i < bracketCount; i++) {
+            recovered.append(']');
+        }
+        for (int i = 0; i < braceCount; i++) {
+            recovered.append('}');
+        }
+
+        String recoveredStr = recovered.toString();
+        // 用 FastJSON 验证补全后的 JSON 是否可解析
+        try {
+            JSONObject.parseObject(recoveredStr);
+            log.info("截断 JSON 恢复成功，补全了 {} 个 ] 和 {} 个 }}", bracketCount, braceCount);
+            return recoveredStr;
+        } catch (Exception e) {
+            log.warn("截断 JSON 恢复失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 解析单道 AI 生成的题目为 QuestionImportVo
+     * 包含分值边界校验 —— AI 可能返回异常大的分值（如 10000）
+     */
+    private QuestionImportVo parseQuestionItem(JSONObject item, AiGenerateRequestVo request) {
+        QuestionImportVo vo = new QuestionImportVo();
+
+        // 基础字段
+        vo.setTitle(item.getString("title"));
+        vo.setType(item.getString("type"));
+        vo.setMulti(item.getBoolean("multi"));
+        vo.setCategoryId(request.getCategoryId());
+        vo.setDifficulty(item.getString("difficulty"));
+
+        // 分值边界校验：限制在 1~100 之间
+        Integer rawScore = item.getInteger("score");
+        if (rawScore == null || rawScore < 1) {
+            vo.setScore(5); // 默认 5 分
+            log.warn("AI 生成题目分值异常（{}）, 使用默认值 5", rawScore);
+        } else if (rawScore > 100) {
+            vo.setScore(100);
+            log.warn("AI 生成题目分值过大（{}）, 限制为 100", rawScore);
+        } else {
+            vo.setScore(rawScore);
+        }
+
+        vo.setAnalysis(item.getString("analysis"));
+        vo.setAnswer(item.getString("answer"));
+
+        // 选择题：解析选项列表
+        if ("CHOICE".equals(vo.getType())) {
+            JSONArray choices = item.getJSONArray("choices");
+            if (choices != null && !choices.isEmpty()) {
+                List<QuestionImportVo.ChoiceImportDto> choiceList = new ArrayList<>();
+                for (int j = 0; j < choices.size(); j++) {
+                    JSONObject choiceObj = choices.getJSONObject(j);
+                    QuestionImportVo.ChoiceImportDto dto = new QuestionImportVo.ChoiceImportDto();
+                    dto.setContent(choiceObj.getString("content"));
+                    dto.setIsCorrect(choiceObj.getBoolean("isCorrect"));
+                    dto.setSort(choiceObj.getInteger("sort"));
+                    choiceList.add(dto);
+                }
+                vo.setChoices(choiceList);
+            }
+        }
+
+        return vo;
     }
 }

@@ -48,11 +48,11 @@ mybatis-plus:
 #          temperature
 kimi:
   api:
-    base-url: https://api.moonshot.cn/v1/chat/completions
+    base-url: https://api.deepseek.com/v1/chat/completions
     # 生产环境通过环境变量注入: export KIMI_API_KEY=sk-xxx
     # 开发环境可在 application-local.yml 中覆盖（该文件已加入 .gitignore）
     api-key: ${KIMI_API_KEY:}
-    model: moonshot-v1-32k
+    model: deepseek-chat
     temperature: 0.3
     max-tokens: 4096
 # ==================== Level 3：JWT 无状态认证配置 ====================
