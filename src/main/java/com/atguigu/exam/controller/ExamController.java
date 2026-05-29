@@ -1,6 +1,5 @@
 package com.atguigu.exam.controller;
 
-
 import com.atguigu.exam.common.Result;
 import com.atguigu.exam.entity.ExamRecord;
 import com.atguigu.exam.service.ExamService;
@@ -29,8 +28,6 @@ public class ExamController {
 
     /**
      * 开始考试 - 创建新的考试记录
-     * @param startExamVo 开始考试请求DTO
-     * @return 考试记录
      */
     @PostMapping("/start")
     @Operation(summary = "开始考试", description = "学生开始考试，创建考试记录并返回试卷内容")
@@ -41,8 +38,6 @@ public class ExamController {
 
     /**
      * 提交答案 - 学生提交考试答案
-     * @param examRecordId 考试记录ID
-     * @param answers      答案列表
      */
     @PostMapping("/{examRecordId}/submit")
     @Operation(summary = "提交考试答案", description = "学生提交考试答案，系统记录答题情况")
@@ -55,7 +50,6 @@ public class ExamController {
 
     /**
      * AI自动批阅 - 触发试卷智能批阅
-     * @param examRecordId 考试记录ID
      */
     @PostMapping("/{examRecordId}/grade")
     @Operation(summary = "自动批阅", description = "客观题即时判分并返回结果，简答题后台异步AI评分，状态为'批阅中'时可轮询刷新获取最终结果")
@@ -80,12 +74,13 @@ public class ExamController {
     }
 
     /**
-     * 获取考试记录列表 - 查询所有考试记录
+     * 获取当前登录用户的考试记录列表
+     * 只返回当前用户自己的记录，不包含其他用户
      */
     @GetMapping("/records")
-    @Operation(summary = "获取考试记录列表", description = "获取所有考试记录列表，包含基本信息和成绩")
+    @Operation(summary = "获取我的考试记录", description = "获取当前登录用户的所有考试记录列表，包含基本信息和成绩")
     public Result<List<ExamRecord>> getMyRecords() {
-        List<ExamRecord> records = examService.getRecords();
+        List<ExamRecord> records = examService.getMyRecords();
         return Result.success(records);
     }
-} 
+}

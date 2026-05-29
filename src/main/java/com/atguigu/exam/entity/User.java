@@ -12,22 +12,24 @@ import java.time.LocalDateTime;
 /**
  * 用户实体类 - 系统用户信息模型
  * 
- * MyBatis Plus教学要点：
- * 1. @TableName注解：指定对应的数据库表名
- * 2. @TableId注解：标识主键字段，AUTO表示数据库自增
- * 3. @TableField注解：处理字段映射，特别是驼峰命名与下划线的转换
- * 4. @Data注解：Lombok自动生成getter/setter、toString等方法
+ * ==================== 真实考试系统为什么需要学号？ ====================
  * 
- * 数据库设计：
- * - 对应表：users
- * - 主键：id（自增）
- * - 索引：username（唯一索引）
+ * 1. 姓名不能作为唯一标识：
+ *    - "张三"可能对应多个学生
+ *    - 改名/入学后姓名变化导致历史记录无法追溯
  * 
- * @author 智能学习平台开发团队
- * @version 1.0
+ * 2. 学号必须唯一：
+ *    - 每个学生在学校有且仅有一个学号
+ *    - 学号是学生在系统内的"身份证号"
+ *    - 成绩只认学号，不认姓名
+ * 
+ * 3. 数据库设计：
+ *    - username（登录账号）唯一 → 用于登录
+ *    - student_no（学号）唯一 → 用于成绩管理、与学校系统对接
+ *    - real_name（真实姓名）→ 展示用，不唯一
  */
-@Data  // Lombok注解：自动生成getter、setter、toString、equals、hashCode方法
-@TableName("users")  // MyBatis Plus注解：指定对应的数据库表名
+@Data
+@TableName("users")
 @Schema(description = "用户信息")
 public class User extends BaseEntity {
     
@@ -39,9 +41,14 @@ public class User extends BaseEntity {
             example = "******")
     private String password;
     
+    @Schema(description = "学号/工号，全局唯一", 
+            example = "20230001")
+    @TableField("student_no")
+    private String studentNo;
+    
     @Schema(description = "用户真实姓名", 
             example = "张三")
-    @TableField("real_name")  // 显式指定数据库字段名
+    @TableField("real_name")
     private String realName;
     
     @Schema(description = "用户角色", 
@@ -53,4 +60,4 @@ public class User extends BaseEntity {
             example = "ACTIVE", 
             allowableValues = {"ACTIVE", "INACTIVE"})
     private String status;
-} 
+}

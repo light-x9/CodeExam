@@ -1,26 +1,27 @@
 package com.atguigu.exam.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 /**
- * 开始考试请求Vo - 学生开始考试时提交的参数
+ * 开始考试请求 VO
+ * 
+ * ==================== 重要改动 ====================
+ * 
+ * 之前：需要前端传 paperId + studentName（手动输入姓名）
+ * 现在：只需要传 paperId，学生信息从 JWT 自动获取
+ * 
+ * 为什么这样设计？
+ * - 真实考试系统不会让学生"输入姓名"，身份由登录系统确定
+ * - JWT Token 里已经有 userId、username、studentNo、realName
+ * - 前端只需选择试卷，后端自动从当前用户上下文获取身份
  */
 @Data
 @Schema(description = "开始考试请求参数")
 public class StartExamVo {
-    
-    @Schema(description = "试卷ID，指定要参加的考试试卷", 
-            example = "1", 
-            requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotNull(message = "试卷ID不能为空")
-    private Integer paperId; // 试卷ID
-    
-    @Schema(description = "考生姓名", 
-            example = "张三", 
-            requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotBlank(message = "考生姓名不能为空")
-    private String studentName; // 考生姓名
-} 
+
+    @Schema(description = "试卷ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Integer paperId;
+
+    // studentName 字段已移除 —— 不再由前端传入，改为从 JWT 自动获取
+}
