@@ -79,7 +79,10 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         question.setAnswer(questionAnswer);
 
         if ("CHOICE".equals(question.getType())) {
-            List<QuestionChoice> questionChoices = questionChoiceMapper.selectList(new LambdaQueryWrapper<QuestionChoice>().eq(QuestionChoice::getQuestionId, id));
+            List<QuestionChoice> questionChoices = questionChoiceMapper.selectList(
+                    new LambdaQueryWrapper<QuestionChoice>()
+                            .eq(QuestionChoice::getQuestionId, id)
+                            .orderByAsc(QuestionChoice::getSort));
             question.setChoices(questionChoices);
         }
         //5. 异步更新Redis热榜分数（使用线程池，不再 new Thread）

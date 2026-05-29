@@ -157,10 +157,12 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
                 QuestionAnswer answer = questionAnswerMapper.selectOne(
                         new LambdaQueryWrapper<QuestionAnswer>().eq(QuestionAnswer::getQuestionId, q.getId()));
                 q.setAnswer(answer);
-                // 选择题：加载选项列表
+                // 选择题：加载选项列表（按 sort 排序，保证字母标签与创建时一致）
                 if ("CHOICE".equals(q.getType())) {
                     List<QuestionChoice> choices = questionChoiceMapper.selectList(
-                            new LambdaQueryWrapper<QuestionChoice>().eq(QuestionChoice::getQuestionId, q.getId()));
+                            new LambdaQueryWrapper<QuestionChoice>()
+                                    .eq(QuestionChoice::getQuestionId, q.getId())
+                                    .orderByAsc(QuestionChoice::getSort));
                     q.setChoices(choices);
                 }
             }

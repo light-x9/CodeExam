@@ -130,10 +130,26 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
             if ("CHOICE".equals(type) || "JUDGE".equals(type)) {
                 // 客观题：对比标准答案
                 QuestionAnswer correctAnswer = question.getAnswer();
-                if (correctAnswer != null && correctAnswer.getAnswer() != null
-                        && correctAnswer.getAnswer().equalsIgnoreCase(ar.getUserAnswer())) {
+                String userAnswer = ar.getUserAnswer();
+                String correctAnswerStr = correctAnswer != null ? correctAnswer.getAnswer() : null;
+
+                // 判断题：统一答案格式（数据库存 TRUE/FALSE，学生提交 T/F）
+                if ("JUDGE".equals(type)) {
+                    // 调试日志：打印归一化前后的值，便于排查格式问题
+                    log.info("判卷调试 - 题目ID={}, 原始标准答案={}, 原始学生答案={}",
+                            question.getId(), correctAnswerStr, userAnswer);
+                    userAnswer = normalizeJudgeAnswer(userAnswer);
+                    correctAnswerStr = normalizeJudgeAnswer(correctAnswerStr);
+                    log.info("判卷调试 - 题目ID={}, 归一化标准答案={}, 归一化学生答案={}",
+                            question.getId(), correctAnswerStr, userAnswer);
+                }
+
+                if (correctAnswerStr != null && correctAnswerStr.equalsIgnoreCase(userAnswer)) {
                     ar.setIsCorrect(1);
-                    ar.setScore(question.getScore());
+                    // 优先使用试卷配置分，无配置时回退到题目默认分
+                    Integer score = question.getPaperScore() != null
+                            ? question.getPaperScore().intValue() : question.getScore();
+                    ar.setScore(score);
                 } else {
                     ar.setIsCorrect(0);
                     ar.setScore(0);
@@ -181,5 +197,40 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
     @Override
     public List<ExamRecord> getRecords() {
         return list();
+    }
+
+    /**
+     * 统一判断题答案格式：将各种正确/错误的写法归一化为 TRUE / FALSE
+     * 支持：T/F、TRUE/FALSE、true/false、1/0、YES/NO、Y/N、正确/错误、对/错
+     * @param answer 原始答案字符串
+     * @return 归一化后的答案（TRUE 或 FALSE），无法识别时返回原值（去空格）
+     */
+    private String normalizeJudgeAnswer(String answer) {
+        if (answer == null) {
+            return null;
+        }
+        String trimmed = answer.trim();
+        if (trimmed.isEmpty()) {
+            return trimmed;
+        }
+        // 正确的各种写法 → TRUE
+        if ("T".equalsIgnoreCase(trimmed) || "TRUE".equalsIgnoreCase(trimmed)
+                || "1".equals(trimmed) || "YES".equalsIgnoreCase(trimmed)
+                || "Y".equalsIgnoreCase(trimmed)
+                || "正确".equals(trimmed) || "对".equals(trimmed)
+                || "✓".equals(trimmed) || "√".equals(trimmed)) {
+            return "TRUE";
+        }
+        // 错误的各种写法 → FALSE
+        if ("F".equalsIgnoreCase(trimmed) || "FALSE".equalsIgnoreCase(trimmed)
+                || "0".equals(trimmed) || "NO".equalsIgnoreCase(trimmed)
+                || "N".equalsIgnoreCase(trimmed)
+                || "错误".equals(trimmed) || "错".equals(trimmed)
+                || "✗".equals(trimmed) || "×".equals(trimmed)) {
+            return "FALSE";
+        }
+        // 无法识别的格式，返回原值（已去空格）
+        log.warn("判断题答案格式无法识别: [{}]，将使用原值比较", trimmed);
+        return trimmed;
     }
 } 
