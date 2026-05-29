@@ -6,7 +6,11 @@ import com.atguigu.exam.common.ErrorCode;
 import com.atguigu.exam.entity.Paper;
 import com.atguigu.exam.entity.PaperQuestion;
 import com.atguigu.exam.entity.Question;
+import com.atguigu.exam.entity.QuestionAnswer;
+import com.atguigu.exam.entity.QuestionChoice;
 import com.atguigu.exam.mapper.PaperMapper;
+import com.atguigu.exam.mapper.QuestionAnswerMapper;
+import com.atguigu.exam.mapper.QuestionChoiceMapper;
 import com.atguigu.exam.mapper.QuestionMapper;
 import com.atguigu.exam.service.PaperQuestionService;
 import com.atguigu.exam.service.PaperService;
@@ -41,6 +45,10 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
     private QuestionService questionService;
     @Autowired
     private QuestionMapper questionMapper;
+    @Autowired
+    private QuestionAnswerMapper questionAnswerMapper;
+    @Autowired
+    private QuestionChoiceMapper questionChoiceMapper;
     /**
      * 手动创建试卷（手动组卷）核心业务方法
      * 功能：接收前端传递的试卷VO，完成试卷创建、题目关联绑定的完整业务流程
@@ -143,7 +151,20 @@ public class PaperServiceImpl extends ServiceImpl<PaperMapper, Paper> implements
                     .map(PaperQuestion::getQuestionId)
                     .collect(Collectors.toList());
             List<Question> questions = questionService.listByIds(questionIds);
-            // 4. 为每道题目设置在本试卷中的分值
+            // 4. 为每道题目加载答案和选项（listByIds 不会自动填充 @TableField(exist=false) 的字段）
+            for (Question q : questions) {
+                // 加载题目答案
+                QuestionAnswer answer = questionAnswerMapper.selectOne(
+                        new LambdaQueryWrapper<QuestionAnswer>().eq(QuestionAnswer::getQuestionId, q.getId()));
+                q.setAnswer(answer);
+                // 选择题：加载选项列表
+                if ("CHOICE".equals(q.getType())) {
+                    List<QuestionChoice> choices = questionChoiceMapper.selectList(
+                            new LambdaQueryWrapper<QuestionChoice>().eq(QuestionChoice::getQuestionId, q.getId()));
+                    q.setChoices(choices);
+                }
+            }
+            // 5. 为每道题目设置在本试卷中的分值
             Map<Long, BigDecimal> scoreMap = paperQuestionList.stream()
                     .collect(Collectors.toMap(PaperQuestion::getQuestionId, PaperQuestion::getScore));
             for (Question q : questions) {
