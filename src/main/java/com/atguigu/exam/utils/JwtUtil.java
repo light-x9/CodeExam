@@ -1,4 +1,4 @@
-package com.atguigu.exam.utils;
+﻿package com.atguigu.exam.utils;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
@@ -40,6 +40,13 @@ public class JwtUtil {
      * 生成 JWT Token
      */
     public String generateToken(Long userId, String username, String studentNo, String role) {
+        return generateToken(userId, username, studentNo, null, role);
+    }
+
+    /**
+     * 生成 JWT Token（包含真实姓名）
+     */
+    public String generateToken(Long userId, String username, String studentNo, String realName, String role) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
@@ -47,6 +54,7 @@ public class JwtUtil {
                 .claim("userId", userId)
                 .claim("username", username)
                 .claim("studentNo", studentNo)
+                .claim("realName", realName)
                 .claim("role", role)
                 .subject(username)
                 .issuedAt(now)
@@ -86,6 +94,17 @@ public class JwtUtil {
     public String getStudentNoFromToken(String token) {
         try {
             return parseToken(token).get("studentNo", String.class);
+        } catch (JwtException e) {
+            return null;
+        }
+    }
+
+    /**
+     * 从 Token 中获取真实姓名
+     */
+    public String getRealNameFromToken(String token) {
+        try {
+            return parseToken(token).get("realName", String.class);
         } catch (JwtException e) {
             return null;
         }

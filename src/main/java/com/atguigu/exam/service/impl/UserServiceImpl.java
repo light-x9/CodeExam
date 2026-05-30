@@ -1,4 +1,4 @@
-package com.atguigu.exam.service.impl;
+﻿package com.atguigu.exam.service.impl;
 
 import com.atguigu.exam.common.BusinessException;
 import com.atguigu.exam.common.ErrorCode;
@@ -62,7 +62,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         // 生成 JWT Token（现在包含学号）
         String token = jwtUtil.generateToken(
-                user.getId(), user.getUsername(), user.getStudentNo(), user.getRole());
+                user.getId(), user.getUsername(), user.getStudentNo(), user.getRealName(), user.getRole());
 
         LoginResponseVo responseVo = new LoginResponseVo();
         responseVo.setUserId(user.getId());
@@ -150,7 +150,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         // 7. 注册成功自动登录：生成 JWT Token（包含学号）
         String token = jwtUtil.generateToken(
-                user.getId(), user.getUsername(), user.getStudentNo(), user.getRole());
+                user.getId(), user.getUsername(), user.getStudentNo(), user.getRealName(), user.getRole());
 
         LoginResponseVo responseVo = new LoginResponseVo();
         responseVo.setUserId(user.getId());
