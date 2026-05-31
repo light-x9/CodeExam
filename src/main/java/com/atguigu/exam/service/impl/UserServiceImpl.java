@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.service.impl;
+package com.atguigu.exam.service.impl;
 
 import com.atguigu.exam.common.BusinessException;
 import com.atguigu.exam.common.ErrorCode;
@@ -10,6 +10,7 @@ import com.atguigu.exam.vo.ChangePasswordVo;
 import com.atguigu.exam.vo.LoginRequestVo;
 import com.atguigu.exam.vo.LoginResponseVo;
 import com.atguigu.exam.vo.RegisterRequestVo;
+import com.atguigu.exam.vo.UpdateProfileVo;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
@@ -80,7 +81,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * 修改密码
      */
     @Override
-    public void changePassword(Long userId, ChangePasswordVo requestVo) {
+    public LoginResponseVo changePassword(Long userId, ChangePasswordVo requestVo) {
         User user = this.getById(userId);
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND, "用户不存在");
@@ -94,6 +95,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setPassword(passwordEncoder.encode(requestVo.getNewPassword()));
         this.updateById(user);
         log.info("密码修改成功：userId={}", userId);
+
+        // 生成新 JWT Token（密码改了，旧Token虽然还能用但要返回新的）
+        String newToken = jwtUtil.generateToken(
+                user.getId(), user.getUsername(), user.getStudentNo(), user.getRealName(), user.getRole());
+
+        LoginResponseVo responseVo = new LoginResponseVo();
+        responseVo.setUserId(user.getId());
+        responseVo.setUsername(user.getUsername());
+        responseVo.setStudentNo(user.getStudentNo());
+        responseVo.setRealName(user.getRealName());
+        responseVo.setRole(user.getRole());
+        responseVo.setToken(newToken);
+        return responseVo;
     }
 
     /**
@@ -164,5 +178,34 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                  user.getUsername(), user.getStudentNo(), user.getId());
         return responseVo;
     }
+    /**
+     * 修改个人信息（真实姓名）
+     * 更新数据库后重新生成 JWT Token（包含新的 realName），前端收到后更新 localStorage 即可立即显示
+     */
+    @Override
+    public LoginResponseVo updateProfile(Long userId, UpdateProfileVo requestVo) {
+        User user = this.getById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND, "用户不存在");
+        }
+        // 如果传了realName则更新
+        if (requestVo.getRealName() != null && !requestVo.getRealName().trim().isEmpty()) {
+            user.setRealName(requestVo.getRealName().trim());
+            this.updateById(user);
+            log.info("个人信息修改成功：userId={}, realName={}", userId, user.getRealName());
+        }
 
+        // 无论是否修改了realName，都重新生成JWT Token（确保Token中的用户信息是最新的）
+        String newToken = jwtUtil.generateToken(
+                user.getId(), user.getUsername(), user.getStudentNo(), user.getRealName(), user.getRole());
+
+        LoginResponseVo responseVo = new LoginResponseVo();
+        responseVo.setUserId(user.getId());
+        responseVo.setUsername(user.getUsername());
+        responseVo.setStudentNo(user.getStudentNo());
+        responseVo.setRealName(user.getRealName());
+        responseVo.setRole(user.getRole());
+        responseVo.setToken(newToken);
+        return responseVo;
+    }
 }

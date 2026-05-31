@@ -8,6 +8,7 @@ import com.atguigu.exam.entity.*;
 import com.atguigu.exam.mapper.AnswerRecordMapper;
 import com.atguigu.exam.mapper.ExamRecordMapper;
 import com.atguigu.exam.mapper.QuestionAnswerMapper;
+import com.atguigu.exam.event.ExamGradedEvent;
 import com.atguigu.exam.service.AsyncGradingService;
 import com.atguigu.exam.service.ExamService;
 import com.atguigu.exam.service.PaperService;
@@ -20,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +50,8 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
     private AsyncGradingService asyncGradingService;
     @Autowired
     private RedissonClient redissonClient;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
     @Autowired
     private QuestionScoreAsyncService questionScoreAsyncService;
 
@@ -251,7 +255,9 @@ public class ExamServiceImpl extends ServiceImpl<ExamRecordMapper, ExamRecord> i
             if (hasSubjective) {
                 record.setStatus("批阅中");
                 updateById(record);
-                asyncGradingService.gradeSubjectiveQuestions(examRecordId, record.getExamId());
+                // 发布事件，由 @TransactionalEventListener 在事务提交后触发异步批阅
+                eventPublisher.publishEvent(new ExamGradedEvent(examRecordId, record.getExamId()));
+                log.info("考试记录 {} 已发布批阅事件，等待事务提交后触发AI批阅", examRecordId);
                 log.info("考试记录 {} 客观题批阅完成（{}分），主观题已提交异步批阅", 
                         examRecordId, objectiveScore);
             } else {

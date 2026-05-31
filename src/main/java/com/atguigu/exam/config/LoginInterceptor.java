@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.config;
+package com.atguigu.exam.config;
 
 import com.atguigu.exam.context.CurrentUser;
 import com.atguigu.exam.context.UserContext;
@@ -126,7 +126,6 @@ public class LoginInterceptor implements HandlerInterceptor {
             String username = jwtUtil.getUsernameFromToken(token);
             String role = jwtUtil.getRoleFromToken(token);
             String studentNo = jwtUtil.getStudentNoFromToken(token);
-            String realName = jwtUtil.getRealNameFromToken(token);
             String realName = jwtUtil.getRealNameFromToken(token);
 
             // 构造不可变的 CurrentUser 对象

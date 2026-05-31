@@ -35,9 +35,9 @@ public class KimiGradingServiceImpl implements KimiGradingService {
     private static final int MAX_RETRY = 3;
 
     /**
-     * 重试间隔（毫秒）—— 避免触发 Kimi API 的速率限制
+     * 重试间隔（毫秒）—— 3秒间隔，给Kimi API足够的恢复时间，避免连续触发限流
      */
-    private static final long RETRY_DELAY_MS = 1000;
+    private static final long RETRY_DELAY_MS = 3000;
 
     @Override
     public GradingResult gradeTextQuestion(String questionTitle, String standardAnswer,
@@ -79,7 +79,7 @@ public class KimiGradingServiceImpl implements KimiGradingService {
         }
 
         // 3. 所有重试都失败 → 返回 null，由调用方标记为"待人工评阅"
-        log.error("AI判卷全部{}次重试失败，降级为待人工评阅", MAX_RETRY);
+        log.error("AI判卷全部{}次重试失败，降级为待人工评阅。题目：{}", MAX_RETRY, questionTitle);
         return null;
     }
 

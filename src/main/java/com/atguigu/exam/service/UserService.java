@@ -5,6 +5,7 @@ import com.atguigu.exam.vo.ChangePasswordVo;
 import com.atguigu.exam.vo.LoginRequestVo;
 import com.atguigu.exam.vo.LoginResponseVo;
 import com.atguigu.exam.vo.RegisterRequestVo;
+import com.atguigu.exam.vo.UpdateProfileVo;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 /**
@@ -26,7 +27,7 @@ public interface UserService extends IService<User> {
      * @param userId      当前登录用户ID（从 ThreadLocal 获取，不由前端传递）
      * @param requestVo   旧密码 + 新密码
      */
-    void changePassword(Long userId, ChangePasswordVo requestVo);
+    LoginResponseVo changePassword(Long userId, ChangePasswordVo requestVo);
 
     /**
      * 用户注册
@@ -52,5 +53,8 @@ public interface UserService extends IService<User> {
      * @throws com.atguigu.exam.common.BusinessException 校验失败时抛出
      */
     LoginResponseVo register(RegisterRequestVo requestVo);
+
+
+    LoginResponseVo updateProfile(Long userId, UpdateProfileVo requestVo);
 
 } 

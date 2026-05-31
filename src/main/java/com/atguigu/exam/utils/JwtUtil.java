@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.utils;
+package com.atguigu.exam.utils;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;

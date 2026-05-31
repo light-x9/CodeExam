@@ -55,6 +55,10 @@ kimi:
     model: deepseek-chat
     temperature: 0.6
     max-tokens: 4096
+    # AI调用超时配置（毫秒）
+    timeout:
+      connect: 10000  # 连接超时：10秒
+      read: 60000     # 读取超时：60秒（AI生成回复可能需要较长时间）
 # ==================== Level 3：JWT 无状态认证配置 ====================
 # JWT Secret 密钥 —— 生产环境必须用复杂随机字符串！
 # HMAC-SHA256 算法要求密钥至少 256 bits（32字节）

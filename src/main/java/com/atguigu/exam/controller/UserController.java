@@ -10,6 +10,7 @@ import com.atguigu.exam.vo.ChangePasswordVo;
 import com.atguigu.exam.vo.LoginRequestVo;
 import com.atguigu.exam.vo.LoginResponseVo;
 import com.atguigu.exam.vo.RegisterRequestVo;
+import com.atguigu.exam.vo.UpdateProfileVo;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -275,9 +276,25 @@ public class UserController {
      * @param requestVo 旧密码 + 新密码
      * @return 操作结果
      */
+
+    /**
+     * 淇敼涓汉淇℃伅锛堢湡瀹炲鍚嶏級
+     * 鍙厑璁镐慨鏀?real_name锛屼笉鍏佽淇敼鐢ㄦ埛鍚?瀛﹀彿
+     */
+    @PutMapping("/profile")
+    @Operation(summary = "修改个人信息", description = "登录用户修改自己的真实姓名")
+    public Result<LoginResponseVo> updateProfile(@RequestBody UpdateProfileVo requestVo) {
+        CurrentUser currentUser = UserContext.require();
+        Long userId = currentUser.getUserId();
+        LoginResponseVo newUserInfo = userService.updateProfile(userId, requestVo);
+        log.info("个人信息修改成功：userId={}, realName={}", userId, newUserInfo.getRealName());
+        // 重点：返回 newUserInfo（含新Token+更新后的realName），前端用它更新localStorage
+        return Result.success(newUserInfo);
+    }
+
     @PostMapping("/changePassword")
     @Operation(summary = "修改密码", description = "登录用户修改自己的密码，修改后当前 Token 失效，需要重新登录")
-    public Result<String> changePassword(HttpServletRequest request,
+    public Result<LoginResponseVo> changePassword(HttpServletRequest request,
                                           @RequestBody ChangePasswordVo requestVo) {
         // ======== 第1步：从 ThreadLocal 获取当前用户（不由前端传递！）========
         CurrentUser currentUser = UserContext.require();
@@ -285,7 +302,7 @@ public class UserController {
 
         // ======== 第2步：调用 Service 层修改密码 ========
         // 异常会被 GlobalExceptionHandler 捕获，统一返回错误响应
-        userService.changePassword(userId, requestVo);
+        LoginResponseVo newUserInfo = userService.changePassword(userId, requestVo);
 
         // ======== 第3步：将当前 Token 加入 Redis 黑名单 ========
         // 密码都改了，旧 Token 当然不能再用了——否则攻击者拿到旧 Token 还能操作
@@ -304,6 +321,7 @@ public class UserController {
         }
 
         log.info("密码修改成功：userId={}, 当前 Token 已失效", userId);
-        return Result.success("密码修改成功，请重新登录");
+        // 重点：返回 newUserInfo（含新Token），前端用它更新localStorage
+        return Result.success(newUserInfo);
     }
 } 
