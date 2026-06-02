@@ -1,6 +1,6 @@
-# CodeExam — AI 智能考试系统
+# CodeExam — AI 智能学习系统
 
-> 基于 Spring Boot 3 + Vue3 + AI 大模型构建的智能在线考试平台，支持 AI 智能出题、主观题异步批阅、混合题型模拟考试等功能。
+> 基于 Spring Boot 3 + Vue3 + AI 大模型构建的面向在线教育场景的智能学习平台，支持 AI 智能出题、AI 主观题异步批改、混合题型模拟考试与学习资源管理等功能
 
 ---
 
@@ -57,5 +57,9 @@ npm run dev
 ---
 
 ## 📷 项目截图
+<img width="1538" height="583" alt="image" src="https://github.com/user-attachments/assets/339337e5-ac7f-439c-84b2-0a55db4de63c" />
+<img width="1552" height="659" alt="image" src="https://github.com/user-attachments/assets/52441713-f579-4dc8-98ee-fc2bf6b9b385" />
+<img width="1143" height="1216" alt="image" src="https://github.com/user-attachments/assets/9f1a996f-bead-43b8-a04e-98a1df0d2b21" />
+<img width="1143" height="1216" alt="image" src="https://github.com/user-attachments/assets/0167a745-67e8-4d3c-8b41-f2e7f66aa32f" />
 
-（可放 1-2 张界面截图，有图胜千言）
+
