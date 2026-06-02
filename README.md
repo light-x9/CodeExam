@@ -59,7 +59,8 @@ npm run dev
 ## 📷 项目截图
 <img width="1538" height="583" alt="image" src="https://github.com/user-attachments/assets/339337e5-ac7f-439c-84b2-0a55db4de63c" />
 <img width="1552" height="659" alt="image" src="https://github.com/user-attachments/assets/52441713-f579-4dc8-98ee-fc2bf6b9b385" />
-<img width="1143" height="1216" alt="image" src="https://github.com/user-attachments/assets/9f1a996f-bead-43b8-a04e-98a1df0d2b21" />
+<img width="1122" height="649" alt="image" src="https://github.com/user-attachments/assets/8bc4b5ce-685c-4acc-bfb2-cb31e3d5a8a7" />
+
 <img width="1143" height="1216" alt="image" src="https://github.com/user-attachments/assets/0167a745-67e8-4d3c-8b41-f2e7f66aa32f" />
 
 
