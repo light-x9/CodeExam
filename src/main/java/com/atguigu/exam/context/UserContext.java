@@ -1,4 +1,4 @@
-package com.atguigu.exam.context;
+﻿package com.atguigu.exam.context;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -151,7 +151,7 @@ import lombok.extern.slf4j.Slf4j;
  *  ⑥ LoginInterceptor.afterCompletion()
  *       UserContext.remove()  // ★ 关键：必须清理！
  * 
- * @author 智能学习平台 - ThreadLocal 用户上下文优化
+ * @author light
  */
 @Slf4j
 public final class UserContext {

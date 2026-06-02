@@ -1,4 +1,4 @@
-package com.atguigu.exam.config;
+﻿package com.atguigu.exam.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.Redisson;
@@ -32,7 +32,7 @@ import org.springframework.context.annotation.Configuration;
  *   请求1 -> 抢到锁(userId=1, examId=100) -> 处理 -> 释放锁
  *   请求2 -> tryLock失败，锁已被持有 -> 直接返回"请勿重复提交"
  * 
- * @author CodeExam
+ * @author light
  */
 @Slf4j
 @Configuration

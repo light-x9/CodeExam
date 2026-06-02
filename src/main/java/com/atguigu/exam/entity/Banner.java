@@ -1,4 +1,4 @@
-package com.atguigu.exam.entity;
+﻿package com.atguigu.exam.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 public class Banner extends BaseEntity{
 
     @Schema(description = "轮播图标题", 
-            example = "智能考试系统介绍")
+            example = "AI Exam System介绍")
     private String title; // 轮播图标题
     
     @Schema(description = "轮播图描述内容", 

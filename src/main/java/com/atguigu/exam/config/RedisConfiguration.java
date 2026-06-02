@@ -1,4 +1,4 @@
-package com.atguigu.exam.config;// 导入Spring配置相关的注解
+﻿package com.atguigu.exam.config;// 导入Spring配置相关的注解
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,7 +12,7 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
  * projectName: exam_system_server_online
- * @author: 赵伟风
+ * @author light
  * description: redis的配置类，核心作用是【自定义Redis的序列化规则】
  * 解决Spring默认RedisTemplate的JDK序列化带来的乱码、可读性差、兼容性差的问题
  */

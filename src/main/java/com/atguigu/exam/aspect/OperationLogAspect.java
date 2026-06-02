@@ -1,4 +1,4 @@
-package com.atguigu.exam.aspect;
+﻿package com.atguigu.exam.aspect;
 
 import com.atguigu.exam.annotation.OperationLog;
 import com.atguigu.exam.context.CurrentUser;
@@ -29,7 +29,7 @@ import java.util.Arrays;
  * 
  * 注意：HttpServletRequest 仍保留用于获取请求 IP，这是合理的（IP 确实是 Web 层信息）
  * 
- * @author 智能学习平台 - ThreadLocal 用户上下文优化
+ * @author light
  */
 @Slf4j
 @Aspect

@@ -1,4 +1,4 @@
-package com.atguigu.exam.config.properties;
+﻿package com.atguigu.exam.config.properties;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -11,7 +11,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "minio")
 public class MinioProperties {
 
-    /** MinIO 服务地址，如 http://192.168.100.128:9000 */
+    /** MinIO 服务地址，如 http://<your-minio-host>:9000 */
     private String endpoint;
 
     /** 访问密钥 */

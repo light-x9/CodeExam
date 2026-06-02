@@ -1,4 +1,4 @@
-package com.atguigu.exam.aspect;
+﻿package com.atguigu.exam.aspect;
 
 import com.atguigu.exam.annotation.RequireRole;
 import com.atguigu.exam.common.BusinessException;
@@ -46,7 +46,7 @@ import java.util.Arrays;
  * 
  * 用了 AOP：一行 @RequireRole("ADMIN") 搞定，权限逻辑集中在切面里。
  * 
- * @author 智能学习平台 - ThreadLocal 用户上下文优化
+ * @author light
  */
 @Slf4j
 @Aspect     // ← 告诉 Spring："我是一个切面，请用我来拦截方法"

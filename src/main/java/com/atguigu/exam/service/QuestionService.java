@@ -1,4 +1,4 @@
-package com.atguigu.exam.service;
+﻿package com.atguigu.exam.service;
 
 import com.atguigu.exam.entity.Question;
 import com.atguigu.exam.vo.AiGenerateRequestVo;
@@ -31,7 +31,7 @@ import java.util.List;
  * - 开闭原则：通过接口定义，便于扩展新的实现
  * - 依赖倒置：Controller依赖接口而不是具体实现
  * 
- * @author 智能学习平台开发团队
+ * @author light
  * @version 1.0
  */
 public interface QuestionService extends IService<Question> {

@@ -1,4 +1,4 @@
-package com.atguigu.exam.annotation;
+﻿package com.atguigu.exam.annotation;
 
 import java.lang.annotation.*;
 
@@ -23,7 +23,7 @@ import java.lang.annotation.*;
  * AOP 最核心的价值就是：
  *   "把相同的代码从 50 个地方，收敛到 1 个地方"
  * 
- * @author 智能学习平台 - Level 4 AOP切面编程
+ * @author light
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

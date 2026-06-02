@@ -1,4 +1,4 @@
-package com.atguigu.exam.controller;
+﻿package com.atguigu.exam.controller;
 
 import com.atguigu.exam.common.Result;
 import com.atguigu.exam.entity.Category;
@@ -38,7 +38,7 @@ import java.util.List;
  * - 使用 Swagger 生成 API 文档
  * - 统一返回 Result<T>格式
  * 
- * @author 智能学习平台开发团队
+ * @author light
  * @version 1.0
  * @since 2025-01-01
  */

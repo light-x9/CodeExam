@@ -1,4 +1,4 @@
-package com.atguigu.exam.common;
+﻿package com.atguigu.exam.common;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -34,7 +34,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * - 泛型擦除：运行时泛型信息会被擦除，编译时类型检查
  * 
  * @param <T> 返回数据的类型，可以是任何Java对象
- * @author 智能学习平台开发团队
+ * @author light
  * @version 1.0
  */
 @Schema(description = "统一API响应结果")

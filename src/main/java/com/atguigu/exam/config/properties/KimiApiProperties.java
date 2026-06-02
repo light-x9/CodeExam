@@ -1,4 +1,4 @@
-package com.atguigu.exam.config.properties;
+﻿package com.atguigu.exam.config.properties;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * projectName: exam_system_server_online
  *
- * @author: 赵伟风
+ * @author light
  * description: 存储kimi交互的四个核心参数
  * kimi api baseUrl
  *          apikey

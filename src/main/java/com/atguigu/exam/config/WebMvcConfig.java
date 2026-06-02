@@ -1,4 +1,4 @@
-package com.atguigu.exam.config;
+﻿package com.atguigu.exam.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -56,7 +56,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * │  LoginInterceptor.afterCompletion() ← ★ UserContext.remove() 清理 │
  * └─────────────────────────────────────────────────────────────┘
  * 
- * @author 智能学习平台 - Level 3/4 拦截器与AOP
+ * @author light
  */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {

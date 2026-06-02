@@ -1,4 +1,4 @@
-package com.atguigu.exam.entity;
+﻿package com.atguigu.exam.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -22,7 +22,7 @@ import java.math.BigDecimal;
  * - 支持难度分级：简单(EASY)、中等(MEDIUM)、困难(HARD)
  * - 支持分类管理：通过categoryId关联分类表
  * 
- * @author 智能学习平台开发团队
+ * @author light
  * @version 1.0
  */
 @Data  // Lombok注解：自动生成所有getter、setter方法

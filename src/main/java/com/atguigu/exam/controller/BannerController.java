@@ -1,4 +1,4 @@
-package com.atguigu.exam.controller;
+﻿package com.atguigu.exam.controller;
 
 // ============================================================================
 // 【导入部分】
@@ -58,7 +58,7 @@ import java.util.Map;
  * - PUT：更新操作（修改轮播图信息、切换状态）
  * - DELETE：删除操作（删除轮播图）
  * 
- * @author 智能学习平台开发团队
+ * @author light
  * @version 1.0
  * @since 2025-01-01
  */
@@ -152,7 +152,7 @@ public class BannerController {
      *   "data": [
      *     {
      *       "id": 1,
-     *       "title": "智能考试系统介绍",
+     *       "title": "AI Exam System介绍",
      *       "imageUrl": "http://...",
      *       "isActive": true,
      *       ...
@@ -253,7 +253,7 @@ public class BannerController {
      *   "message": "操作成功",
      *   "data": {
      *     "id": 1,
-     *     "title": "智能考试系统介绍",
+     *     "title": "AI Exam System介绍",
      *     "description": "...",
      *     "imageUrl": "...",
      *     "linkUrl": "...",

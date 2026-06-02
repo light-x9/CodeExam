@@ -1,4 +1,4 @@
-package com.atguigu.exam.service.impl;
+﻿package com.atguigu.exam.service.impl;
 
 import com.atguigu.exam.common.BusinessException;
 import com.atguigu.exam.common.ErrorCode;
@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
  * - Stream API：Java 8 的流式处理，简化集合操作
  * - Lambda 表达式：类型安全的条件构造
  * 
- * @author 智能学习平台开发团队
+ * @author light
  * @version 1.0
  * @since 2025-01-01
  */

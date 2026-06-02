@@ -1,4 +1,4 @@
-package com.atguigu.exam.annotation;
+﻿package com.atguigu.exam.annotation;
 
 import java.lang.annotation.*;
 
@@ -35,7 +35,7 @@ import java.lang.annotation.*;
  * 
  * 简单说：Interceptor 管"进不进得去"，AOP 管"能不能做"。
  * 
- * @author 智能学习平台 - Level 4 AOP切面编程
+ * @author light
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)

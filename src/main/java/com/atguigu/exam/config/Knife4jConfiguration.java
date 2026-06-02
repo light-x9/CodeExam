@@ -1,4 +1,4 @@
-package com.atguigu.exam.config;
+﻿package com.atguigu.exam.config;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import org.springdoc.core.models.GroupedOpenApi;
@@ -18,8 +18,8 @@ public class Knife4jConfiguration {
     public OpenAPI customOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("🎓 智能考试系统API文档") // API文档标题，添加emoji图标
-                        .description("📚 智能考试系统后端接口文档，提供完整的RESTful API服务\n\n" +
+                        .title("🎓 AI Exam System API文档") // API文档标题，添加emoji图标
+                        .description("📚 AI Exam System 后端接口文档，提供完整的RESTful API服务\n\n" +
                                 "✨ 主要功能模块：\n" +
                                 "• 🧠 题目管理：支持选择题、判断题、简答题的增删改查\n" +
                                 "• 📝 试卷管理：手动组卷和AI智能组卷\n" +

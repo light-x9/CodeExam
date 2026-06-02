@@ -1,15 +1,15 @@
-server:
+﻿server:
   port: 8080
 spring:
   profiles:
-    active: local   # 默认激活本地配置，自动加载 application-local.yml
+    active: local # 默认激活本地配置，自动加载 application-local.yml
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     url: jdbc:mysql://localhost:3306/exam_system_new?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=GMT%2b8
-    username: root
-    password: root
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
     hikari:
       connection-test-query: SELECT 1 # 自动检测连接
       connection-timeout: 60000 #数据库连接超时时间,默认30秒
@@ -20,9 +20,9 @@ spring:
       pool-name: SPHHikariPool # 连接池名称
   data:
     redis:
-      host: 192.168.100.128
-      password: 209746
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
   servlet:
     multipart:
       max-file-size: 500MB
@@ -64,7 +64,7 @@ kimi:
 # HMAC-SHA256 算法要求密钥至少 256 bits（32字节）
 # 下面的密钥仅用于学习，真实项目请用环境变量或配置中心管理
 jwt:
-  secret: exam_system_jwt_secret_key_2024_level3_learning
+  secret: ${JWT_SECRET:exam_system_jwt_secret_key_2024_level3_learning}
   expiration: 86400000  # Token 有效期：24小时（单位：毫秒）
   header: Authorization  # HTTP 请求头名称
   prefix: "Bearer "  # Token 前缀（Bearer 后面有个空格）
@@ -81,7 +81,7 @@ logging:
 
 # ==================== MinIO 对象存储配置 ====================
 minio:
-  endpoint: http://192.168.100.128:9000
-  access-key: minioadmin
-  secret-key: minioadmin
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
   bucket: exam-system

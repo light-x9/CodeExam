@@ -1,4 +1,4 @@
-package com.atguigu.exam.config;
+﻿package com.atguigu.exam.config;
 
 import com.atguigu.exam.context.CurrentUser;
 import com.atguigu.exam.context.UserContext;
@@ -33,7 +33,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
  *        → postHandle()      ← Controller 执行后
  *        → afterCompletion() ← ★ UserContext.remove() 清理 ThreadLocal
  * 
- * @author 智能学习平台 - ThreadLocal 用户上下文优化
+ * @author light
  */
 @Slf4j
 @Component
