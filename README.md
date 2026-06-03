@@ -23,7 +23,7 @@
 
 ## 二、技术栈全景
 
-<div align="center">
+
 
 ```mermaid
 graph TB
@@ -60,7 +60,7 @@ graph TB
     C --> K
 ```
 
-</div>
+
 
 ### 详细版本信息
 
@@ -84,42 +84,40 @@ graph TB
 
 项目采用经典的 **Controller → Service → Mapper → DB** 四层架构，再加上横切关注点（AOP + Interceptor）：
 
-<div align="center">
-
 ```mermaid
 graph TD
-    subgraph "表现层 Controller Layer"
-        CTRL[14 个 Controller<br/>处理 HTTP 请求/响应<br/>参数校验 @Valid]
+    subgraph 表现层["表现层 Controller Layer"]
+        CTRL["14 个 Controller<br/>处理 HTTP 请求/响应<br/>参数校验 @Valid"]
     end
 
-    subgraph "横切层 Cross-cutting"
-        INTCP[LoginInterceptor<br/>JWT 拦截 + ThreadLocal 设置]
-        AOP1[PermissionAspect<br/>@RequireRole 角色校验]
-        AOP2[OperationLogAspect<br/>@OperationLog 日志记录]
-        EXH[GlobalExceptionHandler<br/>统一异常处理 → Result]
+    subgraph 横切层["横切层 Cross-cutting"]
+        INTCP["LoginInterceptor<br/>JWT 拦截 + ThreadLocal 设置"]
+        AOP1["PermissionAspect<br/>@RequireRole 角色校验"]
+        AOP2["OperationLogAspect<br/>@OperationLog 日志记录"]
+        EXH["GlobalExceptionHandler<br/>统一异常处理 → Result"]
     end
 
-    subgraph "业务层 Service Layer"
-        SRV[19 个 Service<br/>业务逻辑 + 事务控制 @Transactional<br/>分布式锁 + 异步处理]
+    subgraph 业务层["业务层 Service Layer"]
+        SRV["19 个 Service<br/>业务逻辑 + 事务控制<br/>分布式锁 + 异步处理"]
     end
 
-    subgraph "持久层 Mapper Layer"
-        MPR[16 个 Mapper<br/>MyBatis-Plus BaseMapper<br/>自定义 SQL XML]
+    subgraph 持久层["持久层 Mapper Layer"]
+        MPR["16 个 Mapper<br/>MyBatis-Plus BaseMapper<br/>自定义 SQL XML"]
     end
 
-    subgraph "数据层 Data Layer"
-        DB[(MySQL<br/>12 张核心表)]
-        REDIS[(Redis<br/>缓存 / 黑名单 / 排行榜)]
-        MINIO[MinIO<br/>文件存储]
+    subgraph 数据层["数据层 Data Layer"]
+        DB["(MySQL 12 张核心表)"]
+        REDIS["(Redis 缓存/黑名单/排行榜)"]
+        MINIO["MinIO 文件存储"]
     end
 
-    subgraph "基础设施 Infrastructure"
-        CFG[Config 配置类]
-        UTIL[Utils 工具类]
-        CTX[UserContext<br/>ThreadLocal 上下文]
-        VO[VO 数据传输对象]
-        ENT[Entity 实体类]
-        EXCP[BusinessException<br/>统一业务异常]
+    subgraph 基础设施["基础设施 Infrastructure"]
+        CFG["Config 配置类"]
+        UTIL["Utils 工具类"]
+        CTX["UserContext ThreadLocal 上下文"]
+        VO["VO 数据传输对象"]
+        ENT["Entity 实体类"]
+        EXCP["BusinessException 统一业务异常"]
     end
 
     CTRL --> SRV
@@ -128,13 +126,11 @@ graph TD
     SRV --> REDIS
     CTRL --> MINIO
 
-    INTCP -.->|请求前/后| CTRL
-    AOP1 -.->|方法执行前| CTRL
-    AOP2 -.->|方法返回后| CTRL
-    EXH -.->|异常时| CTRL
+    INTCP -.->|"请求前/后"| CTRL
+    AOP1 -.->|"方法执行前"| CTRL
+    AOP2 -.->|"方法返回后"| CTRL
+    EXH -.->|"异常时"| CTRL
 ```
-
-</div>
 
 ### 各层职责
 
@@ -268,7 +264,7 @@ com.atguigu.exam
 
 这是整个系统安全体系的基石，采用 **JWT + ThreadLocal + AOP + Redis 黑名单** 的组合方案。
 
-<div align="center">
+
 
 ```mermaid
 sequenceDiagram
@@ -312,7 +308,7 @@ sequenceDiagram
     Controller-->>前端: 退出成功
 ```
 
-</div>
+
 
 #### 关键代码解读
 
@@ -349,7 +345,7 @@ sequenceDiagram
 
 考试流程是最复杂的业务线，涉及试卷校验 → 考试记录创建 → 答题提交（分布式锁） → 批阅（客观题即时 + 主观题异步 AI） → 成绩查看。
 
-<div align="center">
+
 
 ```mermaid
 stateDiagram-v2
@@ -375,7 +371,7 @@ stateDiagram-v2
     end note
 ```
 
-</div>
+
 
 #### 考试提交的分布式锁机制
 
@@ -762,6 +758,8 @@ E:\workspace\exam\
 > 📝 **文档生成时间**：2026-06-03  
 > 📝 **分析工具**：Codex CLI  
 > 📝 **项目作者标注**：@light（代码注释中署名）
+
+
 
 ## 📷 项目截图
 <img width="1538" height="583" alt="image" src="https://github.com/user-attachments/assets/339337e5-ac7f-439c-84b2-0a55db4de63c" />
