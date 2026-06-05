@@ -38,4 +38,10 @@
         </if>
         order by qs.create_time desc
     </select>
+
+    <!-- ???????????id??????? -->
+    <select id="selectAllIds" resultType="java.lang.Long">
+        SELECT id FROM questions WHERE is_deleted = 0
+    </select>
+
 </mapper>

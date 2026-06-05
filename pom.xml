@@ -172,7 +172,14 @@
             <artifactId>redisson</artifactId>
             <version>3.24.3</version>
         </dependency>
-        <!-- JSON Schema 校验 —— 对 AI 返回结果做结构化校验，降低解析失败率 -->
+        <!-- Guava 布隆过滤器 —— 防缓存穿透 -->
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>33.1.0-jre</version>
+    </dependency>
+
+    <!-- JSON Schema 校验 —— 对 AI 返回结果做结构化校验，降低解析失败率 -->
         <dependency>
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>

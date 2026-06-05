@@ -18,6 +18,7 @@ import com.atguigu.exam.service.QuestionService;
 import com.atguigu.exam.utils.ExcelUtil;
 import com.atguigu.exam.utils.JsonSchemaValidator;
 import com.atguigu.exam.utils.RedisUtils;
+import com.atguigu.exam.config.QuestionBloomFilterInit;
 import com.atguigu.exam.vo.AiGenerateRequestVo;
 import com.atguigu.exam.vo.QuestionImportVo;
 import com.atguigu.exam.vo.QuestionQueryVo;
@@ -57,6 +58,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     // 注入 Redis 工具类，用于操作 Redis 缓存
     @Autowired
     private RedisUtils redisUtils;
+    @Autowired
+    private QuestionBloomFilterInit questionBloomFilterInit;
     // 注入异步任务服务，用线程池替代 new Thread()
     @Autowired
     private QuestionScoreAsyncService questionScoreAsyncService;
@@ -70,6 +73,11 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     //根据ID查询题目详情
     @Override
     public Question queryQuestionById(Long id) {
+        // ????????????????????404???????
+        if (!questionBloomFilterInit.mightContain(id)) {
+            throw new BusinessException(ErrorCode.QUESTION_NOT_FOUND,
+                    "id=" + id + " ???????????????");
+        }
         Question question = getById(id);
         if (question == null) {
             throw new BusinessException(ErrorCode.QUESTION_NOT_FOUND,
@@ -158,6 +166,9 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         // save()：继承自 ServiceImpl 的方法，执行 INSERT 操作
         // 保存后，question.getId() 会被自动填充数据库生成的主键 ID
         save(question);
+
+        // ?????????ID??????????????
+        questionBloomFilterInit.add(question.getId());
 
         // 【步骤 3】处理答案信息
         // 从题目对象中获取答案对象
