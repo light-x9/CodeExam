@@ -40,7 +40,8 @@ public class AiGenerateRequestVo {
     
     @Schema(description = "题目分类ID，可以指定生成题目所属的分类", 
             example = "1")
-    private Long categoryId; // 分类ID
+    // 每种题型对应的分类ID，key=题型(CHOICE/JUDGE/TEXT), value=分类ID
+    private java.util.Map<String, Long> categoryIds;
     
     @Schema(description = "是否包含多选题，仅在题目类型包含CHOICE时有效", 
             example = "false")

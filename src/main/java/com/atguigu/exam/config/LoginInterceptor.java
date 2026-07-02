@@ -138,28 +138,11 @@ public class LoginInterceptor implements HandlerInterceptor {
                     .build();
 
             // ━━━━━━━━ 【学习日志】set 之前检查 ━━━━━━━━
-            System.out.println();
-            System.out.println("╔══════════════════════════════════════════════════════╗");
-            System.out.println("║  [1] LoginInterceptor.preHandle() - 请求入口          ║");
-            System.out.println("╠══════════════════════════════════════════════════════╣");
-            System.out.println("║  线程：" + Thread.currentThread().getName());
-            System.out.println("║  URL ：" + request.getRequestURI());
-            System.out.println("║  set前 UserContext.get() = " + UserContext.get() + "  ← 此时应该为 null");
-            System.out.println("║  ★ 即将 set：userId=" + userId + ", username=" + username + ", role=" + role);
-            System.out.println("╚══════════════════════════════════════════════════════╝");
-            System.out.println();
 
             // 存入当前线程的 ThreadLocal
             UserContext.set(currentUser);
 
             // ━━━━━━━━ 【学习日志】set 之后验证 ━━━━━━━━
-            System.out.println("╔══════════════════════════════════════════════════════╗");
-            System.out.println("║  [1] LoginInterceptor.preHandle() - set 之后验证      ║");
-            System.out.println("╠══════════════════════════════════════════════════════╣");
-            System.out.println("║  线程：" + Thread.currentThread().getName());
-            System.out.println("║  set后 UserContext.get() = " + UserContext.get() + "  ← 现在有数据了！");
-            System.out.println("╚══════════════════════════════════════════════════════╝");
-            System.out.println();
 
             log.debug("ThreadLocal 已绑定用户：userId={}, username={}, role={}, URL={}",
                       userId, username, role, request.getRequestURI());
@@ -194,29 +177,12 @@ public class LoginInterceptor implements HandlerInterceptor {
                                 HttpServletResponse response, 
                                 Object handler, Exception ex) {
         // ━━━━━━━━ 【学习日志】remove 之前 ━━━━━━━━
-        System.out.println();
-        System.out.println("╔══════════════════════════════════════════════════════╗");
-        System.out.println("║  [6] LoginInterceptor.afterCompletion() - 请求结束     ║");
-        System.out.println("╠══════════════════════════════════════════════════════╣");
-        System.out.println("║  线程：" + Thread.currentThread().getName());
-        System.out.println("║  remove前 UserContext.get() = " + UserContext.get() + "  ← 请求处理完，数据还在");
-        System.out.println("║  ★ 即将执行 UserContext.remove() ...");
-        System.out.println("╚══════════════════════════════════════════════════════╝");
-        System.out.println();
 
         // ★ 关键：必须在 afterCompletion 中清理 ThreadLocal
         // 无论请求成功还是失败，都要移除当前线程的用户信息
         UserContext.remove();
 
         // ━━━━━━━━ 【学习日志】remove 之后验证 ━━━━━━━━
-        System.out.println("╔══════════════════════════════════════════════════════╗");
-        System.out.println("║  [6] LoginInterceptor.afterCompletion() - remove 之后  ║");
-        System.out.println("╠══════════════════════════════════════════════════════╣");
-        System.out.println("║  线程：" + Thread.currentThread().getName());
-        System.out.println("║  remove后 UserContext.get() = " + UserContext.get() + "  ← 数据已清空！线程归还池");
-        System.out.println("║  ★ 如果这里不是 null，下个请求就会拿到脏数据！");
-        System.out.println("╚══════════════════════════════════════════════════════╝");
-        System.out.println();
     }
 
     /**

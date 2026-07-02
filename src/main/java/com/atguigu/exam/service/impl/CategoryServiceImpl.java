@@ -714,4 +714,46 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
          *    - 使用 getOrDefault 确保 count 为 0 而不是 null
          */
     }
+
+    /**
+     * 根据分类名称和题目类型，解析该类型父节点下对应分类的ID
+     * 例：名称"数据库" + 类型"JUDGE" → 找 parentId=判断题ID 且 name="数据库" 的分类
+     */
+    @Override
+    public Long resolveCategoryIdByType(String categoryName, String questionType) {
+        // 1. 题目类型 → 父分类名
+        String parentName;
+        switch (questionType) {
+            case "CHOICE": parentName = "选择题"; break;
+            case "JUDGE":  parentName = "判断题"; break;
+            case "TEXT":   parentName = "简答题"; break;
+            default:
+                log.warn("未知题目类型: {}, 跳过分类解析", questionType);
+                return null;
+        }
+
+        // 2. 找到类型父分类（parentId=0 的一级分类）
+        Category typeParent = categoryMapper.selectOne(
+                new LambdaQueryWrapper<Category>()
+                        .eq(Category::getName, parentName)
+                        .eq(Category::getParentId, 0L)
+        );
+        if (typeParent == null) {
+            log.warn("找不到类型父分类: {}", parentName);
+            return null;
+        }
+
+        // 3. 在该类型父分类下查找同名子分类
+        Category target = categoryMapper.selectOne(
+                new LambdaQueryWrapper<Category>()
+                        .eq(Category::getName, categoryName)
+                        .eq(Category::getParentId, typeParent.getId())
+        );
+        if (target == null) {
+            log.warn("类型 {} 下找不到分类: {}", parentName, categoryName);
+            return null;
+        }
+
+        return target.getId();
+    }
 }

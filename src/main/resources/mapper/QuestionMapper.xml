@@ -4,36 +4,18 @@
         "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.atguigu.exam.mapper.QuestionMapper">
 
-    <!--
-        题目分页查询专用的 resultMap
-        注意：不再使用嵌套 SELECT collection，避免 MyBatis-Plus 分页拦截器生成 count SQL 时出错
-    -->
     <resultMap id="questionMap" type="com.atguigu.exam.entity.Question">
         <id column="id" property="id" />
-        <!--
-            LEFT JOIN 关联 question_answers 表
-            使用 qas_id 作为 questionAnswer 对象的主键列
-        -->
         <association property="answer" javaType="com.atguigu.exam.entity.QuestionAnswer">
             <id column="qas_id" property="id" />
             <result column="qas_answer" property="answer" />
             <result column="qas_keywords" property="keywords" />
             <result column="qas_create_time" property="createTime" />
             <result column="qas_update_time" property="updateTime" />
-            <!--
-                questionAnswer 的 questionId：通过 qs.id 传入
-                (LEFT JOIN 条件下 qs.id = qas.question_id，值是等价的)
-            -->
             <result column="id" property="questionId" />
         </association>
-        <!--
-            [修复] 移除了嵌套 select 的 collection
-            原因：MyBatis-Plus 3.5.3.x 的 PaginationInnerInterceptor 在处理
-                "LEFT JOIN + 嵌套 select collection" 的 resultMap 时，
-                自动生成 count SQL 会出错，抛出 RuntimeException 导致 500
-            选项数据改由 Service 层查出来后手动 set，避免分页异常
-        -->
     </resultMap>
+
     <select id="customPage" resultMap="questionMap">
         select
         qs.*,
@@ -59,9 +41,13 @@
         order by qs.create_time desc
     </select>
 
-    <!-- 查询最大 ID，系统启动时布隆过滤器初始化使用 -->
     <select id="selectMaxId" resultType="java.lang.Long">
         SELECT MAX(id) FROM questions WHERE is_deleted = 0
+    </select>
+
+    <!-- 查询所有未删除的题目ID，布隆过滤器初始化使用 -->
+    <select id="selectAllIds" resultType="java.lang.Long">
+        SELECT id FROM questions WHERE is_deleted = 0
     </select>
 
 </mapper>

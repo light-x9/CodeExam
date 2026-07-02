@@ -30,7 +30,7 @@ spring:
 #用于打印框架生成的sql语句，便于调试
 mybatis-plus:
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    # log-impl: org.apache.ibatis.logging.stdout.StdOutImpl  # 已关闭控制台SQL打印
     auto-mapping-behavior: full #开启嵌套自动映射
     map-underscore-to-camel-case: true
   global-config:
@@ -78,11 +78,11 @@ logging:
   level:
     root: info  # 全局改回 info，防止刷屏
     # 只针对你想排查的部分开启 debug
-    com.atguigu.exam: debug  # 你的业务代码
-    com.atguigu.exam.mapper: trace  # [调试] 打印 MyBatis 执行的 SQL
-    org.apache.ibatis: debug  # [调试] 打印 MyBatis 详细异常
-    org.springframework.data.redis: debug # Redis 操作相关
-    io.lettuce.core: debug # Redis 连接驱动相关
+    com.atguigu.exam: info  # 业务代码
+    com.atguigu.exam.mapper: off  # MyBatis SQL
+    org.apache.ibatis: off  # MyBatis 详细日志
+    org.springframework.data.redis: off # Redis
+    io.lettuce.core: off # Lettuce
 
 # ==================== MinIO 对象存储配置 ====================
 minio:
