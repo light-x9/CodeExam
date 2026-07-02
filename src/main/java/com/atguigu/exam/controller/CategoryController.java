@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.controller;
+package com.atguigu.exam.controller;
 
 import com.atguigu.exam.common.Result;
 import com.atguigu.exam.entity.Category;

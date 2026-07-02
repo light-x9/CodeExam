@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.controller;
+package com.atguigu.exam.controller;
 
 // ============================================================================
 // 【导入部分】

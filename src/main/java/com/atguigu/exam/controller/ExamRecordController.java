@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -114,4 +115,28 @@ public class ExamRecordController {
         List<ExamRecord> records = examRecordService.list(wrapper);
         return Result.success(records);
     }
+    /**
+     * ????????
+     */
+    @DeleteMapping("/batch")
+    @Operation(summary = "????????")
+    public Result<String> batchDeleteExamRecords(@RequestBody List<Integer> ids) {
+        int successCount = 0;
+        List<String> failures = new ArrayList<>();
+        for (Integer id : ids) {
+            boolean removed = examRecordService.removeById(id);
+            if (removed) {
+                successCount++;
+            } else {
+                failures.add("ID=" + id + ": ?????");
+            }
+        }
+        String message = "???? " + successCount + " ???";
+        if (!failures.isEmpty()) {
+            message += "?" + failures.size() + " ???: " + String.join("; ", failures);
+        }
+        return Result.success(message);
+    }
+
+
 }

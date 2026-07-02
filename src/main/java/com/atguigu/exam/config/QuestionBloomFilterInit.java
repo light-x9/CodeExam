@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.config;
+package com.atguigu.exam.config;
 
 import com.atguigu.exam.mapper.QuestionMapper;
 import com.atguigu.exam.utils.RedisUtils;

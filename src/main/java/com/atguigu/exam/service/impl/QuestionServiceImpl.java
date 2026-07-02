@@ -8,6 +8,7 @@ import com.atguigu.exam.entity.PaperQuestion;
 import com.atguigu.exam.entity.Question;
 import com.atguigu.exam.entity.QuestionAnswer;
 import com.atguigu.exam.entity.QuestionChoice;
+import com.atguigu.exam.mapper.PaperMapper;
 import com.atguigu.exam.mapper.PaperQuestionMapper;
 import com.atguigu.exam.mapper.QuestionAnswerMapper;
 import com.atguigu.exam.mapper.QuestionChoiceMapper;
@@ -35,7 +36,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 题目Service实现类
@@ -50,6 +53,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     private QuestionAnswerMapper questionAnswerMapper;
     @Autowired
     private QuestionChoiceMapper questionChoiceMapper;
+    @Autowired
+    private PaperMapper paperMapper;
     @Autowired
     private PaperQuestionMapper paperQuestionMapper;
     // 注入 Kimi AI 服务实例，用于调用 Kimi API 接口
@@ -67,7 +72,38 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
     @Override
     //分页查询题目列表
     public void queryquestionListByPage(Page<Question> pageBean, QuestionQueryVo questionQueryVo) {
-        pageBean.setRecords(questionMapper.customPage(pageBean, questionQueryVo));
+        // 通过 Mapper 自定义 SQL 查询分页数据（已包含 LEFT JOIN question_answers）
+        List<Question> records = questionMapper.customPage(pageBean, questionQueryVo);
+
+        // [手动加载 choices]
+        // 原因：原 resultMap 中使用 <collection select="..."> 嵌套查询选项，
+        //        在 MyBatis-Plus 3.5.3.x 环境下，分页拦截器生成 count SQL 时会抛 RuntimeException，
+        //        所以改为分页查出来后，再批量查一次 choices 手动 set 进去
+        if (records != null && !records.isEmpty()) {
+            // 收集当前页所有题目 ID
+            List<Long> questionIds = new ArrayList<>(records.size());
+            for (Question q : records) {
+                questionIds.add(q.getId());
+            }
+            // 一次性批量查所有选择题的选项（IN 查询，减少数据库往返）
+            List<QuestionChoice> allChoices = questionChoiceMapper.selectList(
+                    new LambdaQueryWrapper<QuestionChoice>()
+                            .in(QuestionChoice::getQuestionId, questionIds)
+                            .orderByAsc(QuestionChoice::getSort));
+            // 按 questionId 分组
+            Map<Long, List<QuestionChoice>> choicesMap = new HashMap<>();
+            for (QuestionChoice choice : allChoices) {
+                choicesMap.computeIfAbsent(choice.getQuestionId(), k -> new ArrayList<>()).add(choice);
+            }
+            // 手动设置到每个 Question 对象中
+            for (Question q : records) {
+                if ("CHOICE".equals(q.getType())) {
+                    q.setChoices(choicesMap.getOrDefault(q.getId(), new ArrayList<>()));
+                }
+            }
+        }
+
+        pageBean.setRecords(records);
     }
 
     //根据ID查询题目详情

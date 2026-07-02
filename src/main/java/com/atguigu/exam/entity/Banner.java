@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.entity;
+package com.atguigu.exam.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;

@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.aspect;
+package com.atguigu.exam.aspect;
 
 import com.atguigu.exam.annotation.OperationLog;
 import com.atguigu.exam.context.CurrentUser;

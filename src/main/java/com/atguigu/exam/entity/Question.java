@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.entity;
+package com.atguigu.exam.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import io.swagger.v3.oas.annotations.media.Schema;

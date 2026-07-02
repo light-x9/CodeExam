@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.aspect;
+package com.atguigu.exam.aspect;
 
 import com.atguigu.exam.annotation.RequireRole;
 import com.atguigu.exam.common.BusinessException;

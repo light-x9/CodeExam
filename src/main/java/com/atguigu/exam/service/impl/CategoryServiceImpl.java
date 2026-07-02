@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.service.impl;
+package com.atguigu.exam.service.impl;
 
 import com.atguigu.exam.common.BusinessException;
 import com.atguigu.exam.common.ErrorCode;

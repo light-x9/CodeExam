@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.mapper;
+package com.atguigu.exam.mapper;
 
 import com.atguigu.exam.entity.Paper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;

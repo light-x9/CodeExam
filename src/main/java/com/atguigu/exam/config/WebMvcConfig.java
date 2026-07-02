@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.config;
+package com.atguigu.exam.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;

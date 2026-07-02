@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -199,4 +200,28 @@ public class PaperController {
         paperService.deletePaper(id);
         return Result.success(null, "试卷删除成功");
     }
+    /**
+     * ??????
+     */
+    @DeleteMapping("/batch")
+    @Operation(summary = "??????")
+    public Result<String> batchDeletePapers(@RequestBody List<Integer> ids) {
+        int successCount = 0;
+        List<String> failures = new ArrayList<>();
+        for (Integer id : ids) {
+            try {
+                paperService.deletePaper(id);
+                successCount++;
+            } catch (Exception e) {
+                failures.add("ID=" + id + ": " + e.getMessage());
+            }
+        }
+        String message = "???? " + successCount + " ???";
+        if (!failures.isEmpty()) {
+            message += "?" + failures.size() + " ???: " + String.join("; ", failures);
+        }
+        return Result.success(message);
+    }
+
+
 } 

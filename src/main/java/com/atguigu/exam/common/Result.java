@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.common;
+package com.atguigu.exam.common;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

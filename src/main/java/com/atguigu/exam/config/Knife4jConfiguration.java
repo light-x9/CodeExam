@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.config;
+package com.atguigu.exam.config;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import org.springdoc.core.models.GroupedOpenApi;

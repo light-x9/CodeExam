@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.config;// 导入Spring配置相关的注解
+package com.atguigu.exam.config;// 导入Spring配置相关的注解
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.annotation;
+package com.atguigu.exam.annotation;
 
 import java.lang.annotation.*;
 

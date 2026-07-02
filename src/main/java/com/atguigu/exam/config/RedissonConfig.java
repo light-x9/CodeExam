@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.config;
+package com.atguigu.exam.config;
 
 import lombok.extern.slf4j.Slf4j;
 import org.redisson.Redisson;

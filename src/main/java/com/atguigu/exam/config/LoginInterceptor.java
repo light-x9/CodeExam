@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.config;
+package com.atguigu.exam.config;
 
 import com.atguigu.exam.context.CurrentUser;
 import com.atguigu.exam.context.UserContext;

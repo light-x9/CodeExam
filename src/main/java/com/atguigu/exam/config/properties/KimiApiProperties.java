@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.config.properties;
+package com.atguigu.exam.config.properties;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;

@@ -72,10 +72,15 @@ jwt:
     enabled: false  # Redis 黑名单开关：开发环境 false（不依赖 Redis），生产环境 true（启用黑名单）
 
 logging:
+  # [临时调试] 把日志写到文件，方便排查异常堆栈（问题解决后删除下面两行）
+  file:
+    name: logs/exam-backend.log
   level:
     root: info  # 全局改回 info，防止刷屏
     # 只针对你想排查的部分开启 debug
     com.atguigu.exam: debug  # 你的业务代码
+    com.atguigu.exam.mapper: trace  # [调试] 打印 MyBatis 执行的 SQL
+    org.apache.ibatis: debug  # [调试] 打印 MyBatis 详细异常
     org.springframework.data.redis: debug # Redis 操作相关
     io.lettuce.core: debug # Redis 连接驱动相关
 

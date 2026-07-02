@@ -1,4 +1,4 @@
-﻿package com.atguigu.exam.service;
+package com.atguigu.exam.service;
 
 import com.atguigu.exam.entity.Question;
 import com.atguigu.exam.vo.AiGenerateRequestVo;
