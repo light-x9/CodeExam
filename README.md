@@ -101,13 +101,7 @@ npm run dev
 
 后端默认运行在 http://localhost:8080，前端默认运行在 http://localhost:5173。
 
-### 默认账号
 
-| 角色 | 用户名 | 密码 |
-|------|--------|------|
-| 管理员 | admin | admin123 |
-| 教师 | teacher | teacher123 |
-| 学生 | student | student123 |
 
 ---
 
