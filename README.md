@@ -5,8 +5,20 @@
 ---
 
 ## 📸 项目截图
-
-> 🖼️ 截图待补充
+### 🏠 项目首页
+基于 Vue3 + Element Plus 的考试系统门户,支持按知识点/科目快速发起考试,首页展示实时数据统计(用户数、题库覆盖、当日考试量)。
+<img width="2269" height="1361" alt="屏幕截图 2026-07-04 144433" src="https://github.com/user-attachments/assets/eee9eede-913f-4010-9d63-6cd6519ad770" />
+### 🤖 AI 智能出题
+教师端选择科目、难度、题型、数量后,调用 DeepSeek API 自动生成结构化题目,经 JSON Schema 校验后预览入库,失败率从 25% 降至 5%。
+<img width="1156" height="1202" alt="屏幕截图 2026-07-04 185230" src="https://github.com/user-attachments/assets/0f162e47-1534-4870-b453-e91fe3bfee8d" />
+<img width="1136" height="793" alt="屏幕截图 2026-07-04 185217" src="https://github.com/user-attachments/assets/5b44fdc0-4fa7-4e30-bb3c-e97cad6eaf98" />
+### 📊 AI 学情分析
+基于学生答题记录,AI 自动生成薄弱知识点分析报告,辅助针对性练习。
+<img width="1260" height="1016" alt="屏幕截图 2026-07-04 184954" src="https://github.com/user-attachments/assets/956c411a-b08e-489e-8324-07347b88736b" />
+<img width="1271" height="1012" alt="屏幕截图 2026-07-04 184825" src="https://github.com/user-attachments/assets/8149f519-c608-4d7a-9f14-77a4e19f4271" />
+### 📊 成绩报告
+客观题即时判分,主观题异步 AI 批改（事件驱动 + 独立线程池），接口响应 <200ms，批改完成后自动更新分数与评语。
+<img width="1514" height="1071" alt="image" src="https://github.com/user-attachments/assets/5f1273fc-f3ee-4041-b028-2b3899b567d6" />
 
 ---
 
